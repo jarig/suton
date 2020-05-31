@@ -1,0 +1,4 @@
+
+
+class TonLiteClientException(Exception):
+    pass
