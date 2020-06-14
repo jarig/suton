@@ -1,0 +1,4 @@
+
+
+class TonConnectionException(Exception):
+    pass
