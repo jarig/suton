@@ -5,16 +5,16 @@ Framework with set of Docker images and python libraries to deploy and control T
 :warning: **It's work-in-progress project**
 
 Status:
-- TonValidator deployment, execution and synchronization
-- TonControl deployment
-- TonControl can track for validator health and its sync status
+- :heavy_check_mark: TonValidator deployment, execution and synchronization
+- :heavy_check_mark: TonControl deployment
+- :heavy_check_mark: TonControl can track for validator health and its sync status
 - **=== We are here ===**
-- TonLibs are moved to own project and re-usable for other needs
-- TonControl automates participation in elections
-- TonControl reports telemetry via Logstash using TCP protocol
-- Logstash analyzing tonvalidator logs
-- TonControl can send notifications to service-bus
-- TonControl can be controlled via service-bus messages
+- :clock1: TonLibs are moved to own project and re-usable for other needs
+- :clock1: TonControl automates participation in elections
+- :clock1: TonControl reports telemetry via Logstash using TCP protocol
+- :clock1: Logstash analyzing tonvalidator logs
+- :clock1: TonControl can send notifications to service-bus
+- :clock1: TonControl can be controlled via service-bus messages
 
 
 # Usage
@@ -23,8 +23,8 @@ Status:
 - Generate secret seed for work-chain `-1` (validators) using `tonoscli` utility as described in the [Ton Dev doc](https://docs.ton.dev/86757ecb2/p/94921e-multisignature-wallet-management-in-tonos-cli) 
 - Install Docker (no need to enable Hyper-V on windows, but requires docker CLI utilities, `docker-compose` in particular)
 - For setup phase make your server accessible via SSH by root via ssh-keys (or grant root perms for some account you are going to use)
-  Remove th
-
+  Remove this ssh access once setup is finished (or revoke root perms for the account used).
+  Root access will be required by Docker, so that it would be able to connect to remote Docker daemon and run images.
 
 Create following project structure:
 ```text
@@ -34,7 +34,7 @@ manage.py
 requirements.txt
 ```
 
-Where manage.py has following contents:
+Where `manage.py` has following contents:
 ```python
 from suton import TonManage
 TonManage().main()
@@ -45,9 +45,13 @@ And `node-1/settings.py` with the following:
 from suton import TonSettings
 
 class NodeSettings(TonSettings):
+    # where to connect to
     DOCKER_HOST = "ssh://root@<validator machine IP>"
+    # work-dir on HOST machine (where db, logs and configs will be)
     TON_WORK_DIR = "/data/ton-work"
+    # work-dir on HOST mahcine for ton-control (for logs, and key pick-up & remove by ton-control)
     TON_CONTROL_WORK_DIR = "/data/ton-control"
+    # either data-structure for default secret-manager or connection-string for Keyvault type of secret-managers
     TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING = {
         "validator_seed": '<seed phrase>',
         "validator_address": "-1:<validator address>",
@@ -82,7 +86,7 @@ Notes:
 
 # Setup and Configuration
 
-Check [Usage](#usage)
+Check [Usage](#usage) first.
 
 ## Settings
 
@@ -112,3 +116,33 @@ class NodeSettings(TonSettings):
         "custodonian_seeds": []
     }
 ```
+
+## SuTon CLI Commands
+
+This is commands you can run against your setup after you've followed [usage](#usage) steps and included SuTon framework.
+
+**Global Options**
+
+`--node` - Select what node settings to read/pick-up.
+
+### Command "run"
+
+Command for starting containers on the host machine.
+
+`$ python manage.py --node=node1 run -h`
+
+**Options**
+
+`--service` - Specify which service to start.
+
+`--build` - Rebuild image before starting it.
+
+`--attach` - Run and attach to the executed container.
+
+### Command "docker"
+
+Command to invoke any arbitrary `docker-compose` commands on host machine.
+
+`$ python manage.py --node=node1 docker <docker_args>`
+
+Ex: `$ python manage.py docker ps`
