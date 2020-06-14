@@ -43,6 +43,7 @@ TonManage().main()
 And `node-1/settings.py` with the following:
 ```python
 from suton import TonSettings
+import os
 
 class NodeSettings(TonSettings):
     # where to connect to
@@ -52,8 +53,10 @@ class NodeSettings(TonSettings):
     # work-dir on HOST mahcine for ton-control (for logs, and key pick-up & remove by ton-control)
     TON_CONTROL_WORK_DIR = "/data/ton-control"
     # either data-structure for default secret-manager or connection-string for Keyvault type of secret-managers
+    # note: it's possible to encrypt data using RSA keys, check Settings docs.
+    # don't commit your seed phrases!
     TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING = {
-        "validator_seed": '<seed phrase>',
+        "validator_seed": os.environ.get("SOME_ENV_VAR_WITH_SEED"), # can be encrypted
         "validator_address": "-1:<validator address>",
         "custodonian_seeds": []
     }
