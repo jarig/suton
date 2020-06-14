@@ -141,10 +141,9 @@ class ElectionsRoutine(object):
                                                                                     TonCoin(election_stake), election_signed,
                                                                                     private_key=self._secret_manager.get_validator_seed(), bounce=True)
                                     log.info("Election transaction submitted: {}".format(transaction))
-                                    # TODO confirm it by other custodonians
-                                    log.info("Confirming transaction by custodonians")
-                                    for custodonian_seed in self._secret_manager.get_custodonian_seeds():
-                                        self._tonos_cli.confirmTransaction(validator_addr, transaction.tid, custodonian_seed)
+                                    log.info("Confirming transaction by custodians")
+                                    for custodian_seed in self._secret_manager.get_custodian_seeds():
+                                        self._tonos_cli.confirmTransaction(validator_addr, transaction.tid, custodian_seed)
                                     log.info("Confirmed.")
                                     # record that we participated in the election
                                     election_data = ElectionsRoutine.Election(election_id, election_key,

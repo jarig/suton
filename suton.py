@@ -9,6 +9,7 @@ import sys
 class TonSettings(object):
     # Intended to be overriden and values set to appropriate values
     # Note: do not commit sensitive data, and instead use Python to derive them in run-time from secure places
+    NODE_NAME = os.path.basename(os.path.dirname(__file__))
 
     # DOCKER_HOST parameter, ex: ssh://root@1.1.1.1
     DOCKER_HOST = None

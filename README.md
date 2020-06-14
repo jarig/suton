@@ -11,8 +11,8 @@ Status:
 - **=== We are here ===**
 - :clock1: TonLibs are moved to own project and re-usable for other needs
 - :clock1: TonControl automates participation in elections
-- :clock1: TonControl reports telemetry via Logstash using TCP protocol
-- :clock1: Logstash analyzing tonvalidator logs
+- :clock1: TonControl reports telemetry via LogStash using TCP protocol
+- :clock1: LogStash analyzing tonvalidator logs
 - :clock1: TonControl can send notifications to service-bus
 - :clock1: TonControl can be controlled via service-bus messages
 
@@ -61,7 +61,7 @@ class NodeSettings(TonSettings):
     TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING = {
         "validator_seed": os.environ.get("SOME_ENV_VAR_WITH_SEED"), # can be encrypted
         "validator_address": "-1:<validator address>",
-        "custodonian_seeds": []
+        "custodian_seeds": []
     }
 ```
 More info about possible settings options and seed encryption described here: [Settings](#settings)
@@ -74,7 +74,12 @@ git+git://github.com/jarig/suton@master#egg=suton
 Then run:
 1. `$ pip install -r requirements.txt`
 1. `$ python manage.py --node=node-1 run`
-
+   
+   Note: at a moment `tonvalidator` and `toncontrol` are deployable services, so you can run
+   
+   `$ python manage.py --node=node-1 run --service tonvalidator`
+   
+   `$ python manage.py --node=node-1 run --service toncontrol`
 
 # Architecture
 
@@ -116,10 +121,10 @@ class NodeSettings(TonSettings):
         "validator_seed": '<seed phrase>',
         "validator_address": "-1:<validator address>",
         # optional name of a private key you placed under $TON_CONTROL_WORK_DIR/keys
-        # by specifying it you suppose to encrypt with appropriate public key and convert to base64 validator_seed and custodonian_seeds entries.
+        # by specifying it you suppose to encrypt with appropriate public key and convert to base64 validator_seed and custodian_seeds entries.
         "encryption_key_name": "",
-        # list of custodonian seeds that want to automate approvals on their behalf
-        "custodonian_seeds": []
+        # list of custodian seeds that want to automate approvals on their behalf
+        "custodian_seeds": []
     }
 ```
 

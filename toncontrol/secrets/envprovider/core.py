@@ -30,13 +30,13 @@ class EnvSecretProvider(SecretManagerAbstract):
             return rsa.decrypt(base64.decodebytes(self._data.get("validator_seed").encode()), self._private_key)
         return self._data.get("validator_seed")
 
-    def get_custodonian_seeds(self):
+    def get_custodian_seeds(self):
         if self._private_key:
             decr = []
-            for seed in self._data.get("custodonian_seeds", []):
+            for seed in self._data.get("custodian_seeds", []):
                 decr.append(rsa.decrypt(base64.decodebytes(seed.encode()), self._private_key))
                 return decr
-        return self._data.get("custodonian_seeds", [])
+        return self._data.get("custodian_seeds", [])
 
 
 class SecretManager(EnvSecretProvider):

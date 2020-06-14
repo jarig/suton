@@ -44,6 +44,14 @@ class TonosCli(TonExec):
             raise Exception("Failed to run command {}: {}".format(command, out))
         return out
 
+    def _parse_result(self, output: str) -> (dict, None):
+        if "Result" in output:
+            result_keyword = 'Result: '
+            substr = output[output.find(result_keyword) + len(result_keyword):]
+            obj = json.loads(substr)
+            return obj
+        return None
+
     def get_account(self, address) -> TonAccount:
         out = self._run_command('account', [address])
         data = {}
@@ -73,8 +81,9 @@ class TonosCli(TonExec):
                                               "payload": payload})
             out = self._run_command('call', [address, "submitTransaction", transaction_payload,
                                     "--abi", self._abi_path, "--sign", private_key])
+            data = self._parse_result(out)
             log.debug("Tonoscli: {}".format(out))
-            return TonTransaction(out)
+            return TonTransaction(tid=data.get("transId"))
 
     def confirmTransaction(self, address, transaction_id, private_key) -> TonTransaction:
         with secret_manager(secrets=[private_key]):

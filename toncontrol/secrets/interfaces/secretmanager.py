@@ -13,9 +13,9 @@ class SecretManagerAbstract(object):
     def get_validator_seed(self):
         raise NotImplementedError("Implement this method")
 
-    def get_custodonian_seeds(self):
+    def get_custodian_seeds(self):
         """
-        Keys of custodonians whose confirmations should be automated
+        Keys of custodians whose confirmations should be automated
         :return:
         """
         raise NotImplementedError("Implement this method")
