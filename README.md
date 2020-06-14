@@ -25,6 +25,9 @@ Status:
 - For setup phase make your server accessible via SSH by root via ssh-keys (or grant root perms for some account you are going to use)
   Remove this ssh access once setup is finished (or revoke root perms for the account used).
   Root access will be required by Docker, so that it would be able to connect to remote Docker daemon and run images.
+- Prepare you validator machine which should have dedicated place for Ton work-dir (500GB-1TB SSD), and work-dir for ton-controller (no special requirements). 
+- Optional: generate RSA keys, place private key to `<ton-controller-work-dir/keys>`. 
+  Encrypt your wallet seed with public key and convert to base64 format.
 
 Create following project structure:
 ```text
@@ -61,7 +64,7 @@ class NodeSettings(TonSettings):
         "custodonian_seeds": []
     }
 ```
-More info about possible settings options described here: [Settings](#settings)
+More info about possible settings options and seed encryption described here: [Settings](#settings)
 
 And to `requirements.txt`
 ```requirements.txt
