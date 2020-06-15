@@ -112,7 +112,7 @@ class NodeSettings(TonSettings):
     # Database, logs and configurations will appear there
     TON_WORK_DIR = "/data/ton-work"
     # working directory on HOST machine for ton-control
-    # Logs will be written under this location, also ton-control might pick-up keys
+    # Logs will be written under this location (under /log subdir), also ton-control might pick-up keys
     # from under $TON_CONTROL_WORK_DIR/keys for use by secret-manager
     TON_CONTROL_WORK_DIR = "/data/ton-control"
     # Either dict/json data that will be passed to default secret-manager (EnvProvider) 
@@ -157,7 +157,7 @@ Command to invoke any arbitrary `docker-compose` commands on host machine.
 `$ python manage.py --node=node-1 docker <docker_args>`
 
 Ex: `$ python manage.py --node=node-1 docker ps`
-Ex: `$ `
+Ex: `$ python manage.py --node=node-1 docker exec tonvalidator ./check_node_sync_status.sh`
 
 # Troubleshooting
 
