@@ -19,7 +19,7 @@ RUN set -ex && \
 USER ton
 WORKDIR /opt/freeton/
 RUN git clone --depth 1 --recursive https://github.com/tonlabs/main.ton.dev.git
-RUN cd /opt/freeton/main.ton.dev && git checkout -f $TON_SCRIPTS_REV
+RUN cd /opt/freeton/main.ton.dev && git fetch origin $TON_SCRIPTS_REV && git checkout -f $TON_SCRIPTS_REV
 WORKDIR /opt/freeton/main.ton.dev/scripts/
 RUN ./env.sh && ./build.sh
 
@@ -47,11 +47,9 @@ WORKDIR /opt/freeton/main.ton.dev/scripts/
 RUN ./setup.sh
 COPY entry.sh .
 RUN sudo chmod 755 entry.sh
-EXPOSE 43678 43679
 
 ENV TON_ENV="net.ton.dev"
 ENV TON_VALIDATOR_CONFIG_URL=""
-ENV TON_VALIDATOR_PORT=3030
 ENV HOST_TON_CONTROL_USER_ID=$HOST_TON_CONTROL_USER_ID
 ENV HOST_TON_CONTROL_GROUP_ID=$HOST_TON_CONTROL_GROUP_ID
 

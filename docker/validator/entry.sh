@@ -68,7 +68,8 @@ if [[ ! -f "$TON_ENV_LOCAL_CONFIG" ]]; then
     fi
   fi
   echo "INFO: Downloading global configuration file: $config_url"
-  wget $config_url -O ${TON_ENV_GLOBAL_CONFIG}
+  rm -f "$TON_ENV_GLOBAL_CONFIG"
+  wget $config_url -O "$TON_ENV_GLOBAL_CONFIG"
 
   echo "INFO: Getting my public IP..."
   MY_ADDR="$(curl https://ipinfo.io/ip)":${ADNL_PORT}
@@ -81,7 +82,7 @@ if [[ ! -f "$TON_ENV_LOCAL_CONFIG" ]]; then
   server_pub_id=$(awk '{print $2}' "${KEYS_DIR}/keys_s")
   client_pub_id=$(awk '{print $2}' "${KEYS_DIR}/keys_c")
   liteserver_pub_id=$(awk '{print $2}' "${KEYS_DIR}/keys_l")
-  jq '.control[0] = {"id": "'$server_pub_id'", "port": '$TON_VALIDATOR_PORT', "allowed": []}' "$TON_ENV_LOCAL_CONFIG" > "$TON_ENV_LOCAL_CONFIG.tmp"
+  jq '.control[0] = {"id": "'$server_pub_id'", "port": 3030, "allowed": []}' "$TON_ENV_LOCAL_CONFIG" > "$TON_ENV_LOCAL_CONFIG.tmp"
   jq '.control[0].allowed[0] = {"id": "'$client_pub_id'", "permissions": 15}' "$TON_ENV_LOCAL_CONFIG.tmp" > "$TON_ENV_LOCAL_CONFIG"
   cp -f "$TON_ENV_LOCAL_CONFIG" "$TON_ENV_LOCAL_CONFIG.tmp"
   jq '.liteservers[0] = {"id": "'$liteserver_pub_id'", "port": 3031}' "$TON_ENV_LOCAL_CONFIG.tmp" > "$TON_ENV_LOCAL_CONFIG"

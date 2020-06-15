@@ -7,11 +7,11 @@ services:
       args:
         HOST_TON_USER_ID: ${HOST_TON_USER_ID}
         HOST_TON_GROUP_ID: ${HOST_TON_GROUP_ID}
-        TON_SCRIPTS_REV: 'f796da157d9741a12ec7ee2ca929fe2c18e46a73'
+        TON_SCRIPTS_REV: '134b6724d2819483eb1990b2b21e4ed42bdb6872'
     ports:
-      - "127.0.0.1:43679:43679"
-      - "127.0.0.1:43678:43678"
-      - "127.0.0.1:3030:${TON_VALIDATOR_PORT}"
+      - "30310:30310"
+      - "30310:30310/udp"
+      - "127.0.0.1:3030:3030"
     volumes:
       - type: bind
         source: ${TON_WORK_DIR}
@@ -61,8 +61,7 @@ services:
         target: /var/ton-control
     environment:
       - TON_ENV=${TON_ENV}
-      - TON_VALIDATOR_PORT=${TON_VALIDATOR_PORT}
-      - TON_VALIDATOR_NETWORK_ADDR=tonvalidator:${TON_VALIDATOR_PORT}
+      - TON_VALIDATOR_NETWORK_ADDR=tonvalidator:3030
       - TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING=${TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING}
       - TONOS_CLI_CONFIG_URL=https://${TON_ENV}
 

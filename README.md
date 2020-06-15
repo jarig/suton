@@ -51,6 +51,8 @@ import os
 class NodeSettings(TonSettings):
     # where to connect to
     DOCKER_HOST = "ssh://root@<validator machine IP>"
+    # test or main
+    TON_ENV = "net.ton.dev"
     # work-dir on HOST machine (where db, logs and configs will be)
     TON_WORK_DIR = "/data/ton-work"
     # work-dir on HOST mahcine for ton-control (for logs, and key pick-up & remove by ton-control)
@@ -63,6 +65,9 @@ class NodeSettings(TonSettings):
         "validator_address": "-1:<validator address>",
         "custodian_seeds": []
     }
+    # note: at a moment better to use config that is coming from github of net.ton.dev scripts as it's more reliable
+    # though is setting is optional and if omitted, then will derive config based on TEST_ENV param and download them from the corresponding end-points
+    TON_VALIDATOR_CONFIG_URL = "https://raw.githubusercontent.com/tonlabs/net.ton.dev/master/configs/ton-global.config.json"
 ```
 More info about possible settings options and seed encryption described here: [Settings](#settings)
 
@@ -108,6 +113,8 @@ from suton import TonSettings
 class NodeSettings(TonSettings):
     # define where docker-compose should connect to
     DOCKER_HOST = "ssh://root@<validator machine IP>"
+    # defines what env validator will use
+    TON_ENV = "net.ton.dev"
     # working directory on HOST machine for validator
     # Database, logs and configurations will appear there
     TON_WORK_DIR = "/data/ton-work"
@@ -126,6 +133,9 @@ class NodeSettings(TonSettings):
         # list of custodian seeds that want to automate approvals on their behalf
         "custodian_seeds": []
     }
+    # Setting is optional and if omitted, then will derive config based on TEST_ENV param and 
+    # download them from the corresponding end-points: TEST_ENV/ton-global.config.json
+    TON_VALIDATOR_CONFIG_URL = "https://raw.githubusercontent.com/tonlabs/net.ton.dev/master/configs/ton-global.config.json"
 ```
 
 ## SuTon CLI Commands

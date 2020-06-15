@@ -14,9 +14,10 @@ class TonSettings(object):
     # DOCKER_HOST parameter, ex: ssh://root@1.1.1.1
     DOCKER_HOST = None
     TON_WORK_DIR = None
-    TON_ENV = None
+    TON_ENV = "net.ton.dev"
     TON_CONTROL_WORK_DIR = None
-    TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING = None # never ever commit this and set in runtime
+    TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING = None  # never commit your raw seeds, encrypt them or use connection-strings to vaults
+    TON_VALIDATOR_CONFIG_URL = None  # optionally specify where from to take config
 
     def validate(self):
         if self.TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING is None:
@@ -75,6 +76,8 @@ class TonManage(object):
         cenv['TON_CONTROL_WORK_DIR'] = settings.TON_CONTROL_WORK_DIR
         if settings.TON_ENV:
             cenv['TON_ENV'] = settings.TON_ENV
+        if settings.TON_VALIDATOR_CONFIG_URL:
+            cenv['TON_VALIDATOR_CONFIG_URL'] = settings.TON_VALIDATOR_CONFIG_URL
 
         docker_args = []
         if args.parser_name == "docker":
