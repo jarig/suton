@@ -106,7 +106,7 @@ Here are possible values for settings
 from suton import TonSettings
 
 class NodeSettings(TonSettings):
-    # define where docker-compose
+    # define where docker-compose should connect to
     DOCKER_HOST = "ssh://root@<validator machine IP>"
     # working directory on HOST machine for validator
     # Database, logs and configurations will appear there
@@ -140,7 +140,7 @@ This is commands you can run against your setup after you've followed [usage](#u
 
 Command for starting containers on the host machine.
 
-`$ python manage.py --node=node1 run -h`
+`$ python manage.py --node=node-1 run -h`
 
 **Options**
 
@@ -154,6 +154,14 @@ Command for starting containers on the host machine.
 
 Command to invoke any arbitrary `docker-compose` commands on host machine.
 
-`$ python manage.py --node=node1 docker <docker_args>`
+`$ python manage.py --node=node-1 docker <docker_args>`
 
-Ex: `$ python manage.py docker ps`
+Ex: `$ python manage.py --node=node-1 docker ps`
+Ex: `$ `
+
+# Troubleshooting
+
+## Known-host issue with docker-compose
+
+Docker-compose might complain about missing known-host entry. In this case connect at least once via ssh to generate known-host entry.
+In case of Windows you can transfer such known-host entry to `%USERPROFILE%/.ssh/`. 

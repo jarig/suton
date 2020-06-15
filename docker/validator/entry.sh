@@ -40,7 +40,7 @@ if [[ ! -d "$TON_ENV_WORK_DIR" || ! -d "$TON_CLIENT_KEYS_ROOT" ]]; then
   # remove local config file, to update it according to the env set and global config
   rm -f $TON_ENV_GLOBAL_CONFIG
   rm -f $TON_ENV_LOCAL_CONFIG
-  chmod o+r $TON_LOG_ROOT
+  chmod g+r $TON_LOG_ROOT
   echo "INFO: Copying client keys..."
   # setup keys for local-controller client (to shared docker volume)
   sudo cp ${KEYS_DIR}/client $TON_CLIENT_KEYS_ROOT/

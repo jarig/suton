@@ -28,9 +28,18 @@ services:
     image: tonlogstash:latest
     build: 
       context: ./logstash
+      args:
+        TON_USER_GID: ${HOST_TON_GROUP_ID}
+    volumes:
+      - type: bind
+        source: ${TON_WORK_DIR}/${TON_ENV}
+        target: /var/ton-work
+      - type: bind
+        source: ${TON_CONTROL_WORK_DIR}
+        target: /var/ton-control
     environment:
-      - TON_LOG_DIR=${TON_WORK_DIR}/${TON_ENV}/log
-      - TON_CONTROL_LOG_DIR=${TON_CONTROL_WORK_DIR}/log
+      - TON_LOG_DIR=/var/ton-work/log
+      - TON_CONTROL_LOG_DIR=/var/ton-control/log
   toncontrol:
     image: toncontrol:latest
     build:
@@ -52,7 +61,6 @@ services:
         target: /var/ton-control
     environment:
       - TON_ENV=${TON_ENV}
-      - TON_WORK_DIR=${TON_WORK_DIR}/${TON_ENV}
       - TON_VALIDATOR_PORT=${TON_VALIDATOR_PORT}
       - TON_VALIDATOR_NETWORK_ADDR=tonvalidator:${TON_VALIDATOR_PORT}
       - TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING=${TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING}

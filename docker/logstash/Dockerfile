@@ -1,17 +1,21 @@
 FROM docker.elastic.co/logstash/logstash:7.7.0
 
+ARG TON_USER_GID=1001
+
 # Remove example config
 RUN rm -f /usr/share/logstash/pipeline/logstash.conf
-RUN rm -f /usr/share/logstash/config/logstash.yml
+RUN rm -f /usr/share/logstash/config/pipelines.yml
 
 # Copy configs
-ADD pipeline/ /usr/share/logstash/pipeline/
-ADD config/ /usr/share/logstash/config/
+ADD pipeline /usr/share/logstash/pipeline
+ADD config /usr/share/logstash/config
 
-ARG TON_WORK_DIR=/var/ton-work
-ARG TON_LOG_DIR=/var/ton-work/log
-ARG TONCONTROL_LOG_DIR=/var/ton-control/log
+USER root
+RUN groupadd --gid "$TON_USER_GID" ton
+RUN usermod -a -G ton logstash
 
-ENV TON_WORK_DIR=$TON_WORK_DIR
-ENV TON_LOG_DIR=$TON_LOG_DIR
-ENV TONCONTROL_LOG_DIR=$TONCONTROL_LOG_DIR
+
+USER logstash
+ENV TON_WORK_DIR=/var/ton-work
+ENV TON_LOG_DIR=/var/ton-work/log
+ENV TON_CONTROL_LOG_DIR=/var/ton-control/log

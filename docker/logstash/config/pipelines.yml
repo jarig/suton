@@ -1,0 +1,5 @@
+
+- pipeline.id: ton_validator
+  path.config: "/usr/share/logstash/pipeline/ton_validator.conf"
+- pipeline.id: ton_control
+  path.config: "/usr/share/logstash/pipeline/ton_control.conf"

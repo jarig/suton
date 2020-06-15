@@ -1,0 +1,3 @@
+TON_SLOW_MSG SLOW:\s*\[name:%{DATA:slow_mod}\]\[duration:%{NUMBER:slow_duration}ms\]
+TON_MESSAGES (%{TON_SLOW_MSG}|%{DATA})
+TON_MESSAGE \s+%{TON_MESSAGES:ton_message}
