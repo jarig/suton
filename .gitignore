@@ -6,4 +6,5 @@ __pycache__/
 .env
 /.idea
 venv/
-/suton.egg-info/
+suton.egg-info
+
