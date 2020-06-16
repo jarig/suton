@@ -61,7 +61,7 @@ if [[ ! -f "$TON_ENV_LOCAL_CONFIG" ]]; then
       config_url=https://ton.org/ton-global.config.json
     elif [[ "$TON_ENV" == "net.ton.dev" ]]
     then
-      config_url=https://test.ton.org/ton-global.config.json
+      config_url=https://raw.githubusercontent.com/tonlabs/net.ton.dev/master/configs/ton-global.config.json
     else
       echo "ERROR: Don't know what config to download for ton ENV $TON_ENV, use TON_VALIDATOR_CONFIG_URL environment variable to specify the config URL."
       exit 1

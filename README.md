@@ -9,22 +9,24 @@ Status:
 - :heavy_check_mark: TonControl deployment
 - :heavy_check_mark: TonControl can track for validator health and its sync status
 - **=== We are here ===**
-- :clock1: TonLibs are moved to own project and re-usable for other needs
 - :clock1: TonControl automates participation in elections
+- :clock1: TonLibs are moved to own project and re-usable for other needs
+- :clock1: Extendable TonControl with own secret-managers
 - :clock1: TonControl reports telemetry via LogStash using TCP protocol
-- :clock1: LogStash analyzing tonvalidator logs
+- :clock1: LogStash publishing parsed tonvalidator logs
 - :clock1: TonControl can send notifications to service-bus
 - :clock1: TonControl can be controlled via service-bus messages
-
+- :clock1: Extendable TonControl with own service-bus message processors
 
 # Usage
 
 ## Prerequisite
 - Generate secret seed for work-chain `-1` (validators) using `tonoscli` utility as described in the [Ton Dev doc](https://docs.ton.dev/86757ecb2/p/94921e-multisignature-wallet-management-in-tonos-cli) 
-- Install Docker (no need to enable Hyper-V on windows, but requires docker CLI utilities, `docker-compose` in particular)
-- For setup phase make your server accessible via SSH by root via ssh-keys (or grant root perms for some account you are going to use)
+- Install Docker on your machine (no need to enable Hyper-V on windows, but requires docker CLI utilities, `docker-compose` in particular)
+- Install Docker-daemon on remote machine (validator), for example [Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
+- For setup phase make your server accessible via SSH by root via ssh-keys (or grant root perms for some account you are going to use).
   Remove this ssh access once setup is finished (or revoke root perms for the account used).
-  Root access will be required by Docker, so that it would be able to connect to remote Docker daemon and run images.
+  *Root access will be required by Docker, so that it would be able to connect to remote Docker daemon and build/run images.*
 - Prepare you validator machine which should have dedicated place for Ton work-dir (500GB-1TB SSD), and work-dir for ton-controller (no special requirements). 
 - Optional: generate RSA keys, place private key to `<ton-controller-work-dir/keys>`. 
   Encrypt your wallet seed with public key and convert to base64 format.
@@ -39,13 +41,13 @@ requirements.txt
 
 Where `manage.py` has following contents:
 ```python
-from suton import TonManage
+from suton.core import TonManage
 TonManage().main()
 ```
 
 And `node-1/settings.py` with the following:
 ```python
-from suton import TonSettings
+from suton.core import TonSettings
 import os
 
 class NodeSettings(TonSettings):
@@ -82,9 +84,9 @@ Then run:
    
    Note: at a moment `tonvalidator` and `toncontrol` are deployable services, so you can run
    
-   `$ python manage.py --node=node-1 run --service tonvalidator`
+   `$ python manage.py --node=node-1 run --build --service tonvalidator`
    
-   `$ python manage.py --node=node-1 run --service toncontrol`
+   `$ python manage.py --node=node-1 run --build --service toncontrol`
 
 # Architecture
 
@@ -108,7 +110,7 @@ Check [Usage](#usage) first.
 
 Here are possible values for settings
 ```python
-from suton import TonSettings
+from suton.core import TonSettings
 
 class NodeSettings(TonSettings):
     # define where docker-compose should connect to

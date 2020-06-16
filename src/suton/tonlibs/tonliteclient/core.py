@@ -61,8 +61,9 @@ class TonLiteClient(TonExec):
                 tokens = re.split(r"\t|\s", m.group(1))
                 data = {}
                 for token in tokens:
-                    name_val = token.split(":")
-                    data[name_val[0].strip()] = name_val[1].strip()
+                    if token.strip():
+                        name_val = token.split(":")
+                        data[name_val[0].strip()] = name_val[1].strip()
                 params = ElectionParams(validators_elected_for=int(data.get("validators_elected_for", 0)),
                                         elections_start_before=int(data.get("elections_start_before", 0)),
                                         elections_end_before=int(data.get("elections_end_before", 0)),
