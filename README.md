@@ -22,7 +22,7 @@ Status:
 
 ## Prerequisite
 - Generate secret seed for work-chain `-1` (validators) using `tonoscli` utility as described in the [Ton Dev doc](https://docs.ton.dev/86757ecb2/p/94921e-multisignature-wallet-management-in-tonos-cli) 
-- Install Docker on your machine (no need to enable Hyper-V on windows, but requires docker CLI utilities, `docker-compose` in particular)
+- Install Python3 and Docker on your machine (no need to enable Hyper-V on windows, but requires docker CLI utilities, `docker-compose` in particular)
 - Install Docker-daemon on remote machine (validator), for example [Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
 - For setup phase make your server accessible via SSH by root via ssh-keys (or grant root perms for some account you are going to use).
   Remove this ssh access once setup is finished (or revoke root perms for the account used).
