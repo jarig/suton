@@ -20,7 +20,9 @@ from tonfift.core import FiftCli
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--log_path', dest='log_path', default='/opt/toncontrol/log', help='Path to log file')
+    parser.add_argument('--work_dir', dest='work_dir', default='/var/ton-control',
+                        help='Working directory for ton-control service')
+    parser.add_argument('--log_path', dest='log_path', default='/var/ton-control/log', help='Path to log file')
     parser.add_argument("--keys_dir", default='/var/ton-control/keys',
                         help="Path to toncontrol keys folder, copied from hosted machine")
     parser.add_argument("--validator_wallet_seed",
@@ -72,6 +74,8 @@ def main():
                         help="Includes for Fift to generate contract payloads")
 
     args = parser.parse_args()
+    if not os.path.exists(args.work_dir):
+        os.makedirs(args.work_dir)
 
     configure_logging(args.log_path)
     log = logging.getLogger("")
@@ -111,7 +115,8 @@ def main():
     log.info("Starting routines...")
     LogStashClient.start_client()
     # Validator
-    ElectionsRoutine(validation_engine_console=validation_engine_console,
+    ElectionsRoutine(work_dir=os.path.join(args.work_dir, "elections"),
+                     validation_engine_console=validation_engine_console,
                      lite_client=lite_client,
                      tonos_cli=tonos_cli,
                      fift_cli=fift_cli,
@@ -175,4 +180,8 @@ def configure_logging(log_dir):
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except:
+        log = logging.getLogger("")
+        log.exception("Failed to start toncontrol")

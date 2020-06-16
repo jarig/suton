@@ -3,7 +3,7 @@ import re
 
 from toncommon.core import TonExec
 from tonliteclient.exceptions.base import TonLiteClientException
-from tonliteclient.models.ElectionParams import ElectionParams
+from tonliteclient.models.ElectionParams import ElectionParams, StakeParams
 
 log = logging.getLogger("tonclient")
 
@@ -69,6 +69,24 @@ class TonLiteClient(TonExec):
                                         elections_end_before=int(data.get("elections_end_before", 0)),
                                         stake_held_for=int(data.get("stake_held_for", 0)))
                 return params
+        return None
+
+    def get_stake_params(self):
+        """
+        ConfigParam(17) = (
+        min_stake:(nanograms
+            amount:(var_uint len:6 value:10000000000000))
+        max_stake:(nanograms
+            amount:(var_uint len:7 value:10000000000000000))
+        min_total_stake:(nanograms
+            amount:(var_uint len:6 value:100000000000000)) max_stake_factor:196608)
+        """
+        out = self._run_command("getconfig 17")
+        pattern = re.compile(".+min_stake.+?value:(\d+).+max_stake:.+?value:(\d+).+min_total_stake:.+value:(\d+)",
+                             flags=re.DOTALL)
+        m = pattern.match(out)
+        if m:
+            return StakeParams(min_stake=int(m.group(1)), max_stake=int(m.group(2)))
         return None
 
     def get_election_ids(self, elector_addr: str) -> [str]:

@@ -27,7 +27,7 @@ sudo mkdir -p "/var/ton-control/tonos_cwd"
 sudo chown toncontrol:toncontrol -R "/var/ton-control/tonos_cwd"
 
 
-args="--log_path=/var/ton-control/log --queue_name=$TON_CONTROL_QUEUE_NAME --keys_dir=/var/ton-control-keys"
+args="--work_dir=/var/ton-control --log_path=/var/ton-control/log --queue_name=$TON_CONTROL_QUEUE_NAME --keys_dir=/var/ton-control-keys"
 args="$args --tonos_cli_cwd=/var/ton-control/tonos_cwd"
 args="$args --secret_manager_connection_env=TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING"
 args="$args --tonos_cli_abi_path=$TON_CONTROL_ABI_PATH --tonos_cli_tvc_path=$TON_CONTROL_TVC_PATH"

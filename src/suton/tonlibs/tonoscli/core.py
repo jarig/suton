@@ -72,15 +72,15 @@ class TonosCli(TonExec):
         with secret_manager(secrets=[phrase]):
             return self._run_command("getkeypair", [file_location, phrase])
 
-    def submitTransaction(self, address, dest, value: TonCoin, payload, private_key, bounce=False, allBalance=False) -> TonTransaction:
+    def submitTransaction(self, address, dest, value: int, payload, private_key, bounce=False, allBalance=False) -> TonTransaction:
         with secret_manager(secrets=[private_key]):
-            transaction_payload = json.dumps({"dest": dest,
-                                              "value": value.as_nano_tokens(),
+            transaction_payload = json.dumps({"dest": str(dest),
+                                              "value": str(value),
                                               "bounce": bounce,
                                               "allBalance": allBalance,
-                                              "payload": payload})
-            out = self._run_command('call', [address, "submitTransaction", transaction_payload,
-                                    "--abi", self._abi_path, "--sign", private_key])
+                                              "payload": str(payload)})
+            out = self._run_command('call', [address, "submitTransaction", str(transaction_payload),
+                                    "--abi", self._abi_path, "--sign", str(private_key)])
             data = self._parse_result(out)
             log.debug("Tonoscli: {}".format(out))
             return TonTransaction(tid=data.get("transId"))

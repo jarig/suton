@@ -9,8 +9,19 @@ class SensitiveFilter(logging.Filter):
         self._secrets = secrets
 
     def filter(self, record: logging.LogRecord) -> int:
-        for secret in self._secrets:
-            record.message = record.message.replace(secret, "***")
+        if hasattr(record, 'msg'):
+            for secret in self._secrets:
+                record.msg = record.msg.replace(str(secret), "***")
+        if isinstance(record.args, dict):
+            for key in record.args:
+                for secret in self._secrets:
+                    record.args[key] = record.args[key].replace(str(secret), "***")
+        else:
+            nargs = []
+            for i in range(len(record.args)):
+                for secret in self._secrets:
+                    nargs.append(record.args[i].replace(str(secret), "***"))
+            record.args = tuple(nargs)
         return True
 
 

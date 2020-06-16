@@ -1,4 +1,6 @@
+import json
 import logging
+import os
 import threading
 import time
 
@@ -16,36 +18,76 @@ log = logging.getLogger("elections")
 class ElectionsRoutine(object):
 
     class Election(object):
-        def __init__(self, election_id, key, adnl_key, elector_addr):
+        def __init__(self, election_id, key, adnl_key, elector_addr, election_stake):
             self.election_id = election_id
             self.key = key
             self.adnl_key = adnl_key
             self.elector_addr = elector_addr
+            self.election_stake = election_stake
+
+        @staticmethod
+        def from_json(data):
+            return ElectionsRoutine.Election(election_id=data['id'],
+                                             key=data['key'],
+                                             adnl_key=data['adnl_key'],
+                                             elector_addr=data['elector_addr'],
+                                             election_stake=data.get('election_stake'))
+
+        def to_json(self):
+            return {
+                'id': self.election_id,
+                'key': self.key,
+                'adnl_key': self.adnl_key,
+                'elector_addr': self.elector_addr,
+                'election_stake': self.election_stake
+            }
 
         def __str__(self):
             return "[{}] {}".format(self.election_id, self.elector_addr)
     
-    def __init__(self, validation_engine_console: TonValidatorEngineConsole,
+    def __init__(self,
+                 work_dir: str,
+                 validation_engine_console: TonValidatorEngineConsole,
                  lite_client: TonLiteClient,
                  tonos_cli: TonosCli,
                  fift_cli: FiftCli,
                  secret_manager: SecretManagerAbstract,
-                 stake_to_make="25%",  # either % or absolute value
+                 stake_to_make="30%",  # either % or absolute value
                  min_sync_time=50,
+                 min_balance: int = 0,
                  join_elections=True):
+        self._work_dir = work_dir
         self._vec = validation_engine_console
         self._lite_client = lite_client
         self._tonos_cli = tonos_cli
         self._fift_cli = fift_cli
         self._secret_manager = secret_manager
         self._min_sync_time = min_sync_time
+        self._min_balance = min_balance
         self._stake_to_make = stake_to_make
         self._join_elections = join_elections
         self._active_elections: list[ElectionsRoutine.Election] = []
+        self._active_election_file = os.path.join(self._work_dir, "active_elections.json")
         self._check_node_sync_interval_seconds = 2 * 60
         self._check_elections_interval_seconds = 30 * 60
 
+    def load_active_elections(self):
+        if os.path.exists(self._active_election_file):
+            with open(self._active_election_file) as f:
+                election_data = json.load(f)
+            for election in election_data['elections']:
+                self._active_elections.append(ElectionsRoutine.Election.from_json(election))
+        return self._active_elections
+
+    def save_active_elections(self):
+        with open(self._active_election_file, "w") as f:
+            f.write(json.dumps({
+                'elections': [election.to_json() for election in self._active_elections]
+            }))
+
     def start(self):
+        if not os.path.exists(self._work_dir):
+            os.makedirs(self._work_dir)
         thread = threading.Thread(target=self._routine, daemon=True)
         thread.start()
 
@@ -80,6 +122,7 @@ class ElectionsRoutine(object):
         return False
 
     def _routine(self):
+        self.load_active_elections()
         while True:
             sleep_interval = self._check_elections_interval_seconds
             try:
@@ -113,42 +156,74 @@ class ElectionsRoutine(object):
                             if not new_election_ids:
                                 log.info("No new elections found, already participating in all of the existing ones.")
                             else:
+                                balance_left = validator_balance
                                 stake_per_election = validator_balance / len(new_election_ids)
                                 election_stake = self._compute_stake(stake_per_election)
                                 # there are some elections in which we want to participate
                                 log.info("Going to join these elections: {}".format(new_election_ids))
                                 for election_id in new_election_ids:
-                                    log.info("Joining election: {}".format(election_id))
+                                    if balance_left < self._min_balance:
+                                        log.warning("Skipping participation in {}, as otherwise will go below minimum specified balance ({})".format(election_id,
+                                                                                                                                                     self._min_balance))
+                                        continue
+                                    log.info("Joining election: {} with stake {}".format(election_id, election_stake))
+                                    log.info("Getting min stake...")
+                                    stake_params = self._lite_client.get_stake_params()
+                                    if stake_params:
+                                        log.info("Got stake params")
+                                        if election_stake < stake_params.min_stake:
+                                            log.warning("Can't participate in this election as stake is less than minimal: {} < {}".format(election_stake, stake_params.min_stake))
+                                        if election_stake > stake_params.max_stake:
+                                            log.info("Reducing stake to {}".format(stake_params.max_stake))
+                                            # we staked more than allowed, so reduce
+                                            election_stake = stake_params.max_stake
+                                    log.info("Generating keys...")
                                     election_key = self._vec.get_new_key()
                                     election_adnl_key = self._vec.get_new_key()
-                                    elector_params = self._lite_client.get_elector_params()
-                                    election_stop_time = int(election_id) + 1000 + elector_params.elections_start_before + \
-                                                         elector_params.validators_elected_for + \
-                                                         elector_params.elections_end_before + \
-                                                         elector_params.stake_held_for
-                                    self._vec.prepare_election(election_key, election_adnl_key,
-                                                               election_start=election_id, election_stop=election_stop_time)
-                                    election_req = self._fift_cli.generate_validation_req(validator_addr,
-                                                                                          election_start=int(election_id),
-                                                                                          key_adnl=election_adnl_key)
-                                    # sign request
-                                    election_req_signature = self._vec.sign_request(election_key, election_req)
-                                    election_signed = self._fift_cli.generate_validation_signed(validator_addr,
-                                                                                                int(election_id), election_adnl_key,
-                                                                                                election_key, election_req_signature)
+                                    try:
+                                        log.info("Getting elector params...")
+                                        elector_params = self._lite_client.get_elector_params()
+                                        election_stop_time = int(election_id) + 1000 + elector_params.elections_start_before + \
+                                                             elector_params.validators_elected_for + \
+                                                             elector_params.elections_end_before + \
+                                                             elector_params.stake_held_for
+                                        log.info("Preparing election request...")
+                                        self._vec.prepare_election(election_key, election_adnl_key,
+                                                                   election_start=election_id, election_stop=election_stop_time)
+                                        log.info("Generating validation request...")
+                                        election_req = self._fift_cli.generate_validation_req(validator_addr,
+                                                                                              election_start=election_id,
+                                                                                              key_adnl=election_adnl_key)
+                                        # sign request
+                                        log.info("Signing election request...")
+                                        election_req_signature, pub_key = self._vec.sign_request(election_key, election_req)
+                                        log.info("Generating signed election request...")
+                                        election_signed = self._fift_cli.generate_validation_signed(validator_addr,
+                                                                                                    election_id, election_adnl_key,
+                                                                                                    public_key=pub_key,
+                                                                                                    signature=election_req_signature)
 
-                                    transaction = self._tonos_cli.submitTransaction(validator_addr, elector_addr,
-                                                                                    TonCoin(election_stake), election_signed,
-                                                                                    private_key=self._secret_manager.get_validator_seed(), bounce=True)
-                                    log.info("Election transaction submitted: {}".format(transaction))
-                                    log.info("Confirming transaction by custodians")
-                                    for custodian_seed in self._secret_manager.get_custodian_seeds():
-                                        self._tonos_cli.confirmTransaction(validator_addr, transaction.tid, custodian_seed)
-                                    log.info("Confirmed.")
+                                        log.info("Submitting election transaction...")
+                                        transaction = self._tonos_cli.submitTransaction(validator_addr, elector_addr,
+                                                                                        election_stake, election_signed,
+                                                                                        private_key=self._secret_manager.get_validator_seed(), bounce=True)
+                                        log.info("Election transaction submitted: {}".format(transaction))
+                                        custodian_seeds = self._secret_manager.get_custodian_seeds()
+                                        if custodian_seeds:
+                                            log.info("Confirming transaction by custodians")
+                                            for custodian_seed in self._secret_manager.get_custodian_seeds():
+                                                self._tonos_cli.confirmTransaction(validator_addr, transaction.tid, custodian_seed)
+                                            log.info("Confirmed.")
+                                        log.info("Transaction id: {}".format(transaction.tid))
+                                    except:
+                                        self._vec.delete_temp_key(election_key, election_adnl_key)
+                                        self._vec.delete_key(election_key)
+                                        raise
                                     # record that we participated in the election
                                     election_data = ElectionsRoutine.Election(election_id, election_key,
-                                                                              election_adnl_key, elector_addr)
+                                                                              election_adnl_key, elector_addr, election_stake)
                                     self._active_elections.append(election_data)
+                                    balance_left -= election_stake
                         if finished_elections:
                             log.info("Finished elections: {}".format(finished_elections))
                             for finished_election in finished_elections:
@@ -159,16 +234,19 @@ class ElectionsRoutine(object):
                                     if recover_amount:
                                         recover_req = self._fift_cli.generate_recover_stake_req()
                                         transaction = self._tonos_cli.submitTransaction(validator_addr, finished_election.elector_addr,
-                                                                                        value=TonCoin(1),
+                                                                                        value=TonCoin.convert_to_nano_tokens(1),
                                                                                         payload=recover_req,
                                                                                         private_key=self._get_wallet_seed(),
                                                                                         bounce=True)
                                         log.info("Submitted transaction for funds recovery: {}".format(transaction))
-                                    # TODO: remove keys from keyring
+                                    log.info("Removing unused keys")
+                                    self._vec.delete_temp_key(finished_election.key, finished_election.adnl_key)
+                                    self._vec.delete_key(finished_election.key)
                                 except Exception as ex:
                                     log.exception("Failed to request bounty: {}".format(ex))
                                     self._active_elections.append(finished_election)
                             pass
+                        self.save_active_elections()
                     pass
             except Exception as ex:
                 log.exception("Error in validator routine: {}".format(ex))

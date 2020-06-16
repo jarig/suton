@@ -8,3 +8,10 @@ class ElectionParams(object):
         self.elections_start_before = elections_start_before
         self.elections_end_before = elections_end_before
         self.stake_held_for = stake_held_for
+
+
+class StakeParams(object):
+    def __init__(self, min_stake, max_stake):
+        self.min_stake = min_stake
+        self.max_stake = max_stake
+
