@@ -42,7 +42,7 @@ class TonLiteClient(TonExec):
         for line in out.splitlines():
             m = pattern.match(line)
             if m:
-                return TonAddress.set_address_prefix(m.group(1).strip(), TonAddress.Type.MAIN_CHAIN)
+                return TonAddress.set_address_prefix(m.group(1).strip(), TonAddress.Type.MASTER_CHAIN)
         return None
 
     def get_elector_params(self) -> (ElectionParams, None):
@@ -84,7 +84,7 @@ class TonLiteClient(TonExec):
         return None
 
     def get_election_ids(self, elector_addr: str) -> [str]:
-        elector_addr = TonAddress.set_address_prefix(elector_addr, TonAddress.Type.MAIN_CHAIN)
+        elector_addr = TonAddress.set_address_prefix(elector_addr, TonAddress.Type.MASTER_CHAIN)
         out = self._run_command("runmethod {} active_election_id".format(elector_addr))
         pattern = re.compile(r"result:\s+\[(.+)\]")
         for line in out.splitlines():
@@ -95,7 +95,7 @@ class TonLiteClient(TonExec):
         return []
 
     def compute_returned_stakes(self, elector_addr, validator_addr) -> [str]:
-        elector_addr = TonAddress.set_address_prefix(elector_addr, TonAddress.Type.MAIN_CHAIN)
+        elector_addr = TonAddress.set_address_prefix(elector_addr, TonAddress.Type.MASTER_CHAIN)
         validator_addr = TonAddress.set_address_prefix(validator_addr, TonAddress.Type.HEX)
         out = self._run_command("runmethod {} compute_returned_stake {}".format(elector_addr, validator_addr))
         pattern = re.compile(r"result:\s+\[(.+)\]")

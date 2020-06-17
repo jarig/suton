@@ -261,7 +261,7 @@ class ElectionsRoutine(object):
                                         log.info("Recovering: {}".format(recover_amounts))
                                         recover_req = self._fift_cli.generate_recover_stake_req()
                                         transaction = self._tonos_cli.submitTransaction(validator_addr,
-                                                                                        TonAddress.set_address_prefix(finished_election.elector_addr, TonAddress.Type.MAIN_CHAIN),
+                                                                                        TonAddress.set_address_prefix(finished_election.elector_addr, TonAddress.Type.MASTER_CHAIN),
                                                                                         value=TonCoin.convert_to_nano_tokens(1),
                                                                                         payload=recover_req,
                                                                                         private_key=self._get_wallet_seed(),
