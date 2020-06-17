@@ -8,14 +8,14 @@ Status:
 - :heavy_check_mark: TonValidator deployment, execution and synchronization
 - :heavy_check_mark: TonControl deployment
 - :heavy_check_mark: TonControl can track for validator health and its sync status
+- :heavy_check_mark: TonControl automates participation in elections
 - **=== We are here ===**
-- :clock1: TonControl automates participation in elections
-- :clock1: TonLibs are moved to own project and re-usable for other needs
-- :clock1: Extendable TonControl with own secret-managers
 - :clock1: TonControl reports telemetry via LogStash using TCP protocol
 - :clock1: LogStash publishing parsed tonvalidator logs
+- :clock1: Extendable TonControl with own secret-managers
 - :clock1: TonControl can send notifications to service-bus
 - :clock1: TonControl can be controlled via service-bus messages
+- :clock1: TonLibs are moved to own project and re-usable for other needs
 - :clock1: Extendable TonControl with own service-bus message processors
 
 # Usage
