@@ -2,6 +2,7 @@ import logging
 import re
 
 from toncommon.core import TonExec
+from toncommon.models.TonAddress import TonAddress
 from tonliteclient.exceptions.base import TonLiteClientException
 from tonliteclient.models.ElectionParams import ElectionParams, StakeParams
 
@@ -34,13 +35,6 @@ class TonLiteClient(TonExec):
             raise TonLiteClientException("Failed to run command {}: {}".format(command, out))
         return out
 
-    def set_address_prefix(self, adr, prefix):
-        # remove all possible existing prefixes first
-        adr = adr.replace("1:", "")
-        adr = adr.replace("-1:", "")
-        adr = adr.replace("0x", "")
-        return f"{prefix}{adr}"
-
     def get_elector_address(self):
         out = self._run_command("getconfig 1")
         # get address from the output
@@ -48,7 +42,7 @@ class TonLiteClient(TonExec):
         for line in out.splitlines():
             m = pattern.match(line)
             if m:
-                return m.group(1).strip()
+                return TonAddress.set_address_prefix(m.group(1).strip(), TonAddress.Type.MAIN_CHAIN)
         return None
 
     def get_elector_params(self) -> (ElectionParams, None):
@@ -90,7 +84,7 @@ class TonLiteClient(TonExec):
         return None
 
     def get_election_ids(self, elector_addr: str) -> [str]:
-        elector_addr = self.set_address_prefix(elector_addr, '-1:')
+        elector_addr = TonAddress.set_address_prefix(elector_addr, TonAddress.Type.MAIN_CHAIN)
         out = self._run_command("runmethod {} active_election_id".format(elector_addr))
         pattern = re.compile(r"result:\s+\[(.+)\]")
         for line in out.splitlines():
@@ -101,8 +95,8 @@ class TonLiteClient(TonExec):
         return []
 
     def compute_returned_stakes(self, elector_addr, validator_addr) -> [str]:
-        elector_addr = self.set_address_prefix(elector_addr, '-1:')
-        validator_addr = self.set_address_prefix(validator_addr, '0x')
+        elector_addr = TonAddress.set_address_prefix(elector_addr, TonAddress.Type.MAIN_CHAIN)
+        validator_addr = TonAddress.set_address_prefix(validator_addr, TonAddress.Type.HEX)
         out = self._run_command("runmethod {} compute_returned_stake {}".format(elector_addr, validator_addr))
         pattern = re.compile(r"result:\s+\[(.+)\]")
         for line in out.splitlines():

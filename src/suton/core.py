@@ -18,6 +18,8 @@ class TonSettings(object):
     TON_CONTROL_WORK_DIR = None
     TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING = None  # never commit your raw seeds, encrypt them or use connection-strings to vaults
     TON_VALIDATOR_CONFIG_URL = None  # optionally specify where from to take config
+    TON_CONTROL_DEFAULT_STAKE = None  # % or absolute value, ex 30%
+    TON_CONTROL_STAKE_MAX_FACTOR = None
 
     def validate(self):
         if self.TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING is None:
@@ -78,6 +80,10 @@ class TonManage(object):
             cenv['TON_ENV'] = settings.TON_ENV
         if settings.TON_VALIDATOR_CONFIG_URL:
             cenv['TON_VALIDATOR_CONFIG_URL'] = settings.TON_VALIDATOR_CONFIG_URL
+        if settings.TON_CONTROL_DEFAULT_STAKE:
+            cenv['TON_CONTROL_DEFAULT_STAKE'] = settings.TON_CONTROL_DEFAULT_STAKE
+        if settings.TON_CONTROL_STAKE_MAX_FACTOR:
+            cenv['TON_CONTROL_STAKE_MAX_FACTOR'] = settings.TON_CONTROL_STAKE_MAX_FACTOR
 
         docker_args = []
         if args.parser_name == "docker":

@@ -5,6 +5,7 @@ import threading
 import time
 
 from secrets.interfaces.secretmanager import SecretManagerAbstract
+from toncommon.models.TonAddress import TonAddress
 from toncommon.models.TonCoin import TonCoin
 from tonfift.core import FiftCli
 from tonliteclient.core import TonLiteClient
@@ -24,14 +25,18 @@ class ElectionsRoutine(object):
             self.adnl_key = adnl_key
             self.elector_addr = elector_addr
             self.election_stake = election_stake
+            self.re_elect = False
 
         @staticmethod
         def from_json(data):
-            return ElectionsRoutine.Election(election_id=data['id'],
+            election = ElectionsRoutine.Election(election_id=data['id'],
                                              key=data['key'],
                                              adnl_key=data['adnl_key'],
                                              elector_addr=data['elector_addr'],
                                              election_stake=data.get('election_stake'))
+            if data.get('re_elect'):
+                election.re_elect = True
+            return election
 
         def to_json(self):
             return {
@@ -39,7 +44,8 @@ class ElectionsRoutine(object):
                 'key': self.key,
                 'adnl_key': self.adnl_key,
                 'elector_addr': self.elector_addr,
-                'election_stake': self.election_stake
+                'election_stake': self.election_stake,
+                're_elect': self.re_elect
             }
 
         def __str__(self):
@@ -55,6 +61,7 @@ class ElectionsRoutine(object):
                  stake_to_make="30%",  # either % or absolute value
                  min_sync_time=50,
                  min_balance: int = 0,
+                 stake_max_factor: str = '3',
                  join_elections=True):
         self._work_dir = work_dir
         self._vec = validation_engine_console
@@ -65,11 +72,13 @@ class ElectionsRoutine(object):
         self._min_sync_time = min_sync_time
         self._min_balance = min_balance
         self._stake_to_make = stake_to_make
+        self._stake_max_factor = stake_max_factor
         self._join_elections = join_elections
         self._active_elections: list[ElectionsRoutine.Election] = []
         self._active_election_file = os.path.join(self._work_dir, "active_elections.json")
         self._check_node_sync_interval_seconds = 2 * 60
         self._check_elections_interval_seconds = 30 * 60
+
 
     def load_active_elections(self):
         if os.path.exists(self._active_election_file):
@@ -97,11 +106,15 @@ class ElectionsRoutine(object):
             return int(value * factor)
         return int(self._stake_to_make)
 
-    def _get_active_election_by_id(self, eid):
+    def _get_active_election_by_id(self, eid) -> Election:
         for election in self._active_elections:
             if str(election.election_id) == str(eid):
                 return election
         return None
+
+    def _cleanup_election(self, election: Election):
+        self._vec.delete_temp_key(election.key, election.adnl_key)
+        self._vec.delete_key(election.key)
     
     def _get_wallet_seed(self):
         return self._secret_manager.get_validator_seed()
@@ -142,6 +155,7 @@ class ElectionsRoutine(object):
                         elector_addr = self._lite_client.get_elector_address()
                         election_ids = self._lite_client.get_election_ids(elector_addr)
                         log.info("Elector address: {}".format(elector_addr))
+                        log.info("Election ids: {}".format(election_ids))
                         # cleanup current active elections
                         finished_elections = []
                         for active_election in self._active_elections[:]:
@@ -152,7 +166,16 @@ class ElectionsRoutine(object):
                             log.info("No elections happening at a moment.")
                         else:
                             log.info("Current active elections: {}".format(election_ids))
-                            new_election_ids = [eid for eid in election_ids if not self._get_active_election_by_id(eid)]
+                            new_election_ids = []
+                            for eid in election_ids:
+                                active_election = self._get_active_election_by_id(eid)
+                                if not active_election:
+                                    new_election_ids.append(eid)
+                                elif active_election.re_elect:
+                                    log.info("Cleaning up election keys, preparing for re-election")
+                                    self._cleanup_election(active_election)
+                                    self._active_elections.remove(active_election)
+                                    new_election_ids.append(eid)
                             if not new_election_ids:
                                 log.info("No new elections found, already participating in all of the existing ones.")
                             else:
@@ -180,6 +203,10 @@ class ElectionsRoutine(object):
                                     log.info("Generating keys...")
                                     election_key = self._vec.get_new_key()
                                     election_adnl_key = self._vec.get_new_key()
+                                    # create election record
+                                    election_data = ElectionsRoutine.Election(election_id, election_key,
+                                                                              election_adnl_key, elector_addr,
+                                                                              election_stake)
                                     try:
                                         log.info("Getting elector params...")
                                         elector_params = self._lite_client.get_elector_params()
@@ -193,7 +220,8 @@ class ElectionsRoutine(object):
                                         log.info("Generating validation request...")
                                         election_req = self._fift_cli.generate_validation_req(validator_addr,
                                                                                               election_start=election_id,
-                                                                                              key_adnl=election_adnl_key)
+                                                                                              key_adnl=election_adnl_key,
+                                                                                              max_factor=self._stake_max_factor)
                                         # sign request
                                         log.info("Signing election request...")
                                         election_req_signature, pub_key = self._vec.sign_request(election_key, election_req)
@@ -201,10 +229,12 @@ class ElectionsRoutine(object):
                                         election_signed = self._fift_cli.generate_validation_signed(validator_addr,
                                                                                                     election_id, election_adnl_key,
                                                                                                     public_key=pub_key,
-                                                                                                    signature=election_req_signature)
+                                                                                                    signature=election_req_signature,
+                                                                                                    max_factor=self._stake_max_factor)
 
                                         log.info("Submitting election transaction...")
-                                        transaction = self._tonos_cli.submitTransaction(validator_addr, elector_addr,
+                                        transaction = self._tonos_cli.submitTransaction(validator_addr,
+                                                                                        elector_addr,
                                                                                         election_stake, election_signed,
                                                                                         private_key=self._secret_manager.get_validator_seed(), bounce=True)
                                         log.info("Election transaction submitted: {}".format(transaction))
@@ -216,12 +246,8 @@ class ElectionsRoutine(object):
                                             log.info("Confirmed.")
                                         log.info("Transaction id: {}".format(transaction.tid))
                                     except:
-                                        self._vec.delete_temp_key(election_key, election_adnl_key)
-                                        self._vec.delete_key(election_key)
+                                        self._cleanup_election(election_data)
                                         raise
-                                    # record that we participated in the election
-                                    election_data = ElectionsRoutine.Election(election_id, election_key,
-                                                                              election_adnl_key, elector_addr, election_stake)
                                     self._active_elections.append(election_data)
                                     balance_left -= election_stake
                         if finished_elections:
@@ -230,18 +256,21 @@ class ElectionsRoutine(object):
                                 try:
                                     log.info("Requesting bounty from: {}".format(finished_election))
                                     # no election happening
-                                    recover_amount = self._lite_client.compute_returned_stakes(finished_election.elector_addr, validator_addr)
-                                    if recover_amount:
+                                    recover_amounts = self._lite_client.compute_returned_stakes(finished_election.elector_addr, validator_addr)
+                                    if recover_amounts:
+                                        log.info("Recovering: {}".format(recover_amounts))
                                         recover_req = self._fift_cli.generate_recover_stake_req()
-                                        transaction = self._tonos_cli.submitTransaction(validator_addr, finished_election.elector_addr,
+                                        transaction = self._tonos_cli.submitTransaction(validator_addr,
+                                                                                        TonAddress.set_address_prefix(finished_election.elector_addr, TonAddress.Type.MAIN_CHAIN),
                                                                                         value=TonCoin.convert_to_nano_tokens(1),
                                                                                         payload=recover_req,
                                                                                         private_key=self._get_wallet_seed(),
                                                                                         bounce=True)
                                         log.info("Submitted transaction for funds recovery: {}".format(transaction))
+                                    else:
+                                        log.info("Nothing to recover: {}".format(recover_amounts))
                                     log.info("Removing unused keys")
-                                    self._vec.delete_temp_key(finished_election.key, finished_election.adnl_key)
-                                    self._vec.delete_key(finished_election.key)
+                                    self._cleanup_election(finished_election)
                                 except Exception as ex:
                                     log.exception("Failed to request bounty: {}".format(ex))
                                     self._active_elections.append(finished_election)

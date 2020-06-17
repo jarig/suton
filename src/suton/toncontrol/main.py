@@ -27,6 +27,10 @@ def main():
                         help="Path to toncontrol keys folder, copied from hosted machine")
     parser.add_argument("--validator_wallet_seed",
                         help="Validator seed phrase or connection string")
+    parser.add_argument('--default_election_stake', dest='default_election_stake', default='30%',
+                        help='Stake to make on elections, % or absolute value')
+    parser.add_argument('--stake_max_factor', dest='stake_max_factor', default='3',
+                        help='Stake max-factor')
     parser.add_argument("--secret_manager_connection_env",
                         help="Env variable containing secret manager connection string")
     parser.add_argument("--secret_manager_provider", default='secrets.envprovider.core',
@@ -121,7 +125,10 @@ def main():
                      tonos_cli=tonos_cli,
                      fift_cli=fift_cli,
                      secret_manager=secret_manager,
-                     min_sync_time=args.validator_min_sync_diff).start()
+                     min_sync_time=args.validator_min_sync_diff,
+                     stake_to_make=args.default_election_stake,
+                     stake_max_factor=args.stake_max_factor
+                     ).start()
     # Queue
     QueueRoutine(validation_engine_console=validation_engine_console,
                  queue_provider=queue_provider).start()

@@ -47,7 +47,7 @@ class FiftCli(TonExec):
         boc64, _ = self.generate_boc('recover-stake.fif')
         return boc64
 
-    def generate_validation_req(self, wallet_addr, election_start, key_adnl, max_factor=2.7) -> str:
+    def generate_validation_req(self, wallet_addr, election_start, key_adnl, max_factor=3) -> str:
         _, out = self.generate_boc('validator-elect-req.fif',
                                    args=[wallet_addr, str(election_start), str(max_factor), key_adnl])
         lines = out.splitlines()
@@ -55,7 +55,7 @@ class FiftCli(TonExec):
         return lines[1]
 
     def generate_validation_signed(self, wallet_addr, election_start, key_adnl, public_key,
-                                   signature, max_factor=2.7) -> str:
+                                   signature, max_factor=3) -> str:
         boc64, _ = self.generate_boc('validator-elect-signed.fif',
                                      args=[wallet_addr, str(election_start), str(max_factor), key_adnl,
                                            public_key, signature])

@@ -32,6 +32,16 @@ args="$args --tonos_cli_cwd=/var/ton-control/tonos_cwd"
 args="$args --secret_manager_connection_env=TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING"
 args="$args --tonos_cli_abi_path=$TON_CONTROL_ABI_PATH --tonos_cli_tvc_path=$TON_CONTROL_TVC_PATH"
 
+if [[ ! -z $TON_CONTROL_DEFAULT_STAKE ]]
+then
+  args="$args --default_election_stake=$TON_CONTROL_DEFAULT_STAKE"
+fi
+
+if [[ ! -z $TON_CONTROL_STAKE_MAX_FACTOR ]]
+then
+  args="$args --stake_max_factor=$TON_CONTROL_STAKE_MAX_FACTOR"
+fi
+
 if [[ ! -z $FIFT_INCLUDES ]]
 then
   args="$args --fift_includes=$FIFT_INCLUDES"
@@ -59,4 +69,5 @@ fi
 
 echo "./main.py $args"
 python3 ./main.py $args
+
 
