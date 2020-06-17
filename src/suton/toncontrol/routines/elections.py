@@ -79,7 +79,6 @@ class ElectionsRoutine(object):
         self._check_node_sync_interval_seconds = 2 * 60
         self._check_elections_interval_seconds = 30 * 60
 
-
     def load_active_elections(self):
         if os.path.exists(self._active_election_file):
             with open(self._active_election_file) as f:
@@ -203,6 +202,8 @@ class ElectionsRoutine(object):
                                     log.info("Generating keys...")
                                     election_key = self._vec.get_new_key()
                                     election_adnl_key = self._vec.get_new_key()
+                                    log.info("Perm key hash: {}".format(election_key))
+                                    log.info("ADNL key hash: {}".format(election_adnl_key))
                                     # create election record
                                     election_data = ElectionsRoutine.Election(election_id, election_key,
                                                                               election_adnl_key, elector_addr,
@@ -244,7 +245,7 @@ class ElectionsRoutine(object):
                                             for custodian_seed in self._secret_manager.get_custodian_seeds():
                                                 self._tonos_cli.confirmTransaction(validator_addr, transaction.tid, custodian_seed)
                                             log.info("Confirmed.")
-                                        log.info("Transaction id: {}".format(transaction.tid))
+                                        log.info("Transaction id: {}, election: {}".format(transaction.tid, election_id))
                                     except:
                                         self._cleanup_election(election_data)
                                         raise
@@ -267,10 +268,10 @@ class ElectionsRoutine(object):
                                                                                         private_key=self._get_wallet_seed(),
                                                                                         bounce=True)
                                         log.info("Submitted transaction for funds recovery: {}".format(transaction))
+                                        log.info("Removing unused keys")
+                                        self._cleanup_election(finished_election)
                                     else:
                                         log.info("Nothing to recover: {}".format(recover_amounts))
-                                    log.info("Removing unused keys")
-                                    self._cleanup_election(finished_election)
                                 except Exception as ex:
                                     log.exception("Failed to request bounty: {}".format(ex))
                                     self._active_elections.append(finished_election)

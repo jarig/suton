@@ -2,6 +2,7 @@ version: "3.8"
 services:
   tonvalidator:
     image: tonvalidator:latest
+    restart: always
     build: 
       context: ./validator
       args:
