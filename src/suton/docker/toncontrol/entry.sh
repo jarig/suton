@@ -57,6 +57,11 @@ then
   args="$args --tonos_config_url=$TONOS_CLI_CONFIG_URL"
 fi
 
+if [[ ! -z $TON_CONTROL_QUEUE_NAME ]]
+then
+  args="$args --queue_name=$TON_CONTROL_QUEUE_NAME"
+fi
+
 if [[ ! -z $TON_CONTROL_QUEUE_PROVIDER_IMPORT_PATH ]]
 then
   args="$args --queue_provider=$TON_CONTROL_QUEUE_PROVIDER_IMPORT_PATH"

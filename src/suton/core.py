@@ -9,7 +9,7 @@ import sys
 class TonSettings(object):
     # Intended to be overriden and values set to appropriate values
     # Note: do not commit sensitive data, and instead use Python to derive them in run-time from secure places
-    NODE_NAME = os.path.basename(os.path.dirname(__file__))
+    NODE_NAME = None
 
     # DOCKER_HOST parameter, ex: ssh://root@1.1.1.1
     DOCKER_HOST = None
@@ -19,6 +19,8 @@ class TonSettings(object):
     TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING = None  # never commit your raw seeds, encrypt them or use connection-strings to vaults
     TON_VALIDATOR_CONFIG_URL = None  # optionally specify where from to take config
     TON_CONTROL_DEFAULT_STAKE = None  # % or absolute value, ex 30%
+    TON_CONTROL_QUEUE_NAME = None
+    TONOS_CLI_CONFIG_URL = None
     TON_CONTROL_STAKE_MAX_FACTOR = None
 
     def validate(self):
@@ -84,6 +86,14 @@ class TonManage(object):
             cenv['TON_CONTROL_DEFAULT_STAKE'] = settings.TON_CONTROL_DEFAULT_STAKE
         if settings.TON_CONTROL_STAKE_MAX_FACTOR:
             cenv['TON_CONTROL_STAKE_MAX_FACTOR'] = settings.TON_CONTROL_STAKE_MAX_FACTOR
+        if settings.TONOS_CLI_CONFIG_URL:
+            cenv['TONOS_CLI_CONFIG_URL'] = settings.TONOS_CLI_CONFIG_URL
+        if settings.TON_CONTROL_QUEUE_NAME:
+            cenv['TON_CONTROL_QUEUE_NAME'] = settings.TON_CONTROL_QUEUE_NAME
+        elif settings.NODE_NAME:
+            cenv['TON_CONTROL_QUEUE_NAME'] = "node-{}".format(settings.NODE_NAME)
+        else:
+            cenv['TON_CONTROL_QUEUE_NAME'] = "node-{}".format(args.node)
 
         docker_args = []
         if args.parser_name == "docker":
