@@ -29,7 +29,7 @@ Status:
   *Root access will be required by Docker, so that it would be able to connect to remote Docker daemon and build/run images.*
 - Prepare you validator machine which should have dedicated place for Ton work-dir (500GB-1TB SSD), and work-dir for ton-controller (no special requirements). 
 - Optional: generate RSA keys, place private key to `<ton-controller-work-dir/keys>`. 
-  Encrypt your wallet seed with public key and convert to base64 format.
+  Encrypt your wallet seed with public key and convert to base64 format, [details here](#seed-encryption).
 
 Create following project structure:
 ```text
@@ -71,7 +71,7 @@ class NodeSettings(TonSettings):
     # though is setting is optional and if omitted, then will derive config based on TEST_ENV param and download them from the corresponding end-points
     TON_VALIDATOR_CONFIG_URL = "https://raw.githubusercontent.com/tonlabs/net.ton.dev/master/configs/ton-global.config.json"
 ```
-More info about possible settings options and seed encryption described here: [Settings](#settings)
+More info about possible settings options and [seed encryption](#seed-encryption) described here in the [settings](#settings) section.
 
 And to `requirements.txt`
 ```requirements.txt
@@ -127,18 +127,42 @@ class NodeSettings(TonSettings):
     # Either dict/json data that will be passed to default secret-manager (EnvProvider) 
     # or can be connection-string for Keyvault type of secret-managers
     TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING = {
-        "validator_seed": '<seed phrase>',
+        "validator_seed": '<seed phrase or encrypted seed phrase>',
         "validator_address": "-1:<validator address>",
         # optional name of a private key you placed under $TON_CONTROL_WORK_DIR/keys
         # by specifying it you suppose to encrypt with appropriate public key and convert to base64 validator_seed and custodian_seeds entries.
         "encryption_key_name": "",
         # list of custodian seeds that want to automate approvals on their behalf
+        # also should be in encrypted form if 'encryption_key_name' is present.
         "custodian_seeds": []
     }
-    # Setting is optional and if omitted, then will derive config based on TEST_ENV param and 
+    # optional: percent or absolute value(in tokens) of the stake that elector should make
+    TON_CONTROL_DEFAULT_STAKE = "35%"
+    # optional: max-factor for the elections. The maximum ratio allowed between your stake and the minimal validator stake in the elected validator group
+    TON_CONTROL_STAKE_MAX_FACTOR = None
+    # optional: url to configuration that tonos-cli should use (default is derived from TON_ENV, i.e https://$TON_ENV)
+    TONOS_CLI_CONFIG_URL = None
+    # optional: Setting is optional and if omitted, then will derive config based on TEST_ENV param and 
     # download them from the corresponding end-points: TEST_ENV/ton-global.config.json
     TON_VALIDATOR_CONFIG_URL = "https://raw.githubusercontent.com/tonlabs/net.ton.dev/master/configs/ton-global.config.json"
 ```
+
+## Seed Encryption
+
+It's bad practice to commit sensitive information to git repos, even private ones. So it's better to encrypt your seed and put it into the git in encrypted form.
+
+To generate encrypted seed:
+```bash
+$ openssl genrsa -out key.pem 1024
+$ openssl rsa -in key.pem -pubout -out pub.pem
+$ echo '<seed phrase>' | openssl rsautl -encrypt -pubin -inkey ./pub.pem |openssl enc -A -base64
+# save base64 string, this is your encrypted seed that you can put to settings of NodeSettings class
+# verify that encrypted and converted to base64 format key is correct
+$ echo "<base64_output>" |base64 -d | openssl rsautl -decrypt -inkey key.pem
+```
+
+Your private key (`key.pem` in the example above) should be placed to `<ton_control_work_dir>/keys` folder and its name saved in `TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING` json of `NodeSettings` class under `encryption_key_name` key of json payload.
+
 
 ## SuTon CLI Commands
 

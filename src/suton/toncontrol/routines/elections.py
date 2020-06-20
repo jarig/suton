@@ -99,11 +99,11 @@ class ElectionsRoutine(object):
         thread = threading.Thread(target=self._routine, daemon=True)
         thread.start()
 
-    def _compute_stake(self, value):
+    def _compute_stake(self, balance):
         if '%' in self._stake_to_make:
             factor = float(self._stake_to_make.replace('%', '')) / 100
-            return int(value * factor)
-        return int(self._stake_to_make)
+            return int(balance * factor)
+        return min(balance, TonCoin.convert_to_nano_tokens(int(self._stake_to_make)))
 
     def _get_active_election_by_id(self, eid) -> Election:
         for election in self._active_elections:
