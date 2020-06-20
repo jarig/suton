@@ -41,8 +41,10 @@ services:
     environment:
       - TON_LOG_DIR=/var/ton-work/log
       - TON_CONTROL_LOG_DIR=/var/ton-control/log
+      - LOGSTASH_ELASTIC_HOST=${LOGSTASH_ELASTIC_HOST}
   toncontrol:
     image: toncontrol:latest
+    restart: always
     build:
       context: ..
       dockerfile: docker/toncontrol/Dockerfile

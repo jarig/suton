@@ -23,6 +23,9 @@ class TonSettings(object):
     TONOS_CLI_CONFIG_URL = None
     TON_CONTROL_STAKE_MAX_FACTOR = None
 
+    # Logstash
+    LOGSTASH_ELASTIC_HOST = None
+
     def validate(self):
         if self.TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING is None:
             raise Exception("You need to set secret-manager connection string value")
@@ -30,7 +33,7 @@ class TonSettings(object):
 
 class TonManage(object):
 
-    def get_settings(self, settings_path=""):
+    def get_settings(self, settings_path="") -> TonSettings:
         mod = importlib.import_module("{}.settings".format(settings_path))
         return mod.NodeSettings()
 
@@ -94,6 +97,9 @@ class TonManage(object):
             cenv['TON_CONTROL_QUEUE_NAME'] = "node-{}".format(settings.NODE_NAME)
         else:
             cenv['TON_CONTROL_QUEUE_NAME'] = "node-{}".format(args.node)
+
+        if settings.LOGSTASH_ELASTIC_HOST:
+            cenv['LOGSTASH_ELASTIC_HOST'] = settings.LOGSTASH_ELASTIC_HOST
 
         docker_args = []
         if args.parser_name == "docker":

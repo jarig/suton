@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 import os
@@ -12,6 +13,8 @@ from tonliteclient.core import TonLiteClient
 from tonoscli.core import TonosCli
 from tonvalidator.core import TonValidatorEngineConsole
 from tonvalidator.exceptions.connection import TonConnectionException
+
+from logstash.client import LogStashClient
 
 log = logging.getLogger("elections")
 
@@ -125,6 +128,7 @@ class ElectionsRoutine(object):
         try:
             time_diff = self._vec.get_sync_time_diff()
             log.debug("Time diff: {}".format(time_diff))
+            self._send_telemetry('node_status', {'time_diff': time_diff})
             if time_diff <= self._min_sync_time:
                 return True
         except TonConnectionException as ex:
@@ -133,15 +137,22 @@ class ElectionsRoutine(object):
             log.error("Failed to get time-diff stats: {}".format(ex))
         return False
 
+    def _send_telemetry(self, data_type, data: dict):
+        data['timestamp'] = datetime.datetime.utcnow().strftime("%Y-%M-%d %H:%M:%S")
+        data['data_type'] = data_type
+        LogStashClient.get_client().send_data('elections', data)
+
     def _routine(self):
         self.load_active_elections()
         while True:
+            telemetry_data = {}
             sleep_interval = self._check_elections_interval_seconds
             try:
                 is_synced = self._check_if_synced()
                 if not is_synced:
                     sleep_interval = self._check_node_sync_interval_seconds
                     log.info("Validator not synced, waiting until it synchronizes. Next check after: {}s".format(sleep_interval))
+                    telemetry_data['error'] = 'out of sync'
                 else:
                     log.info("Validator is in synced state.")
                     if self._join_elections:
@@ -155,9 +166,17 @@ class ElectionsRoutine(object):
                         election_ids = self._lite_client.get_election_ids(elector_addr)
                         log.info("Elector address: {}".format(elector_addr))
                         log.info("Election ids: {}".format(election_ids))
+                        telemetry_data = {'validator_address': validator_addr,
+                                          'balance': validator_balance,
+                                          'election_ids': election_ids,
+                                          'pending_staked_balance': 0,
+                                          'recover_amount': 0,
+                                          'active_elections': []}
                         # cleanup current active elections
                         finished_elections = []
                         for active_election in self._active_elections[:]:
+                            telemetry_data['active_elections'].append(active_election.election_id)
+                            telemetry_data['pending_staked_balance'] += int(active_election.election_stake)
                             if str(active_election.election_id) not in election_ids:
                                 finished_elections.append(active_election)
                                 self._active_elections.remove(active_election)
@@ -183,22 +202,28 @@ class ElectionsRoutine(object):
                                 election_stake = self._compute_stake(stake_per_election)
                                 # there are some elections in which we want to participate
                                 log.info("Going to join these elections: {}".format(new_election_ids))
+                                log.info("Getting min stake...")
+                                stake_params = self._lite_client.get_stake_params()
+                                election_telemetry = {}
                                 for election_id in new_election_ids:
                                     if balance_left < self._min_balance:
+                                        election_telemetry['error'] = 'Not enough balance'
                                         log.warning("Skipping participation in {}, as otherwise will go below minimum specified balance ({})".format(election_id,
                                                                                                                                                      self._min_balance))
                                         continue
                                     log.info("Joining election: {} with stake {}".format(election_id, election_stake))
-                                    log.info("Getting min stake...")
-                                    stake_params = self._lite_client.get_stake_params()
                                     if stake_params:
                                         log.info("Got stake params")
+                                        election_telemetry['min_stake'] = stake_params.min_stake
+                                        election_telemetry['max_stake'] = stake_params.max_stake
                                         if election_stake < stake_params.min_stake:
                                             log.warning("Can't participate in this election as stake is less than minimal: {} < {}".format(election_stake, stake_params.min_stake))
                                         if election_stake > stake_params.max_stake:
                                             log.info("Reducing stake to {}".format(stake_params.max_stake))
                                             # we staked more than allowed, so reduce
                                             election_stake = stake_params.max_stake
+                                    election_telemetry['election_id'] = election_id
+                                    election_telemetry['election_stake'] = election_stake
                                     log.info("Generating keys...")
                                     election_key = self._vec.get_new_key()
                                     election_adnl_key = self._vec.get_new_key()
@@ -246,11 +271,15 @@ class ElectionsRoutine(object):
                                                 self._tonos_cli.confirmTransaction(validator_addr, transaction.tid, custodian_seed)
                                             log.info("Confirmed.")
                                         log.info("Transaction id: {}, election: {}".format(transaction.tid, election_id))
-                                    except:
+                                        election_telemetry['elected'] = True
+                                    except Exception as ex:
+                                        telemetry_data['error'] = str(ex)
+                                        election_telemetry['error'] = str(ex)
                                         self._cleanup_election(election_data)
                                         raise
                                     self._active_elections.append(election_data)
                                     balance_left -= election_stake
+                                    self._send_telemetry('election_join', election_telemetry)
                         if finished_elections:
                             log.info("Finished elections: {}".format(finished_elections))
                             for finished_election in finished_elections:
@@ -270,6 +299,7 @@ class ElectionsRoutine(object):
                                         log.info("Submitted transaction for funds recovery: {}".format(transaction))
                                         log.info("Removing unused keys")
                                         self._cleanup_election(finished_election)
+                                        telemetry_data['recover_amount'] = sum(int(amount) for amount in recover_amounts)
                                     else:
                                         log.info("Nothing to recover: {}".format(recover_amounts))
                                 except Exception as ex:
@@ -279,7 +309,10 @@ class ElectionsRoutine(object):
                         self.save_active_elections()
                     pass
             except Exception as ex:
+                telemetry_data['error'] = str(ex)
                 log.exception("Error in validator routine: {}".format(ex))
-            log.info("Sleeping for: {}s".format(sleep_interval))
+            self._send_telemetry('election_status', telemetry_data)
+            log.info("Sleeping for: {}s, next check after {}".format(sleep_interval,
+                                                                     datetime.datetime.now() + datetime.timedelta(seconds=sleep_interval)))
             time.sleep(sleep_interval)
 

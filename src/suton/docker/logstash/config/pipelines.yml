@@ -3,3 +3,6 @@
   path.config: "/usr/share/logstash/pipeline/ton_validator.conf"
 - pipeline.id: ton_control
   path.config: "/usr/share/logstash/pipeline/ton_control.conf"
+  pipeline.batch.size: 120
+  pipeline.batch.delay: 500
+  pipeline.workers: 3
