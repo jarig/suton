@@ -1,5 +1,6 @@
 
 - pipeline.id: ton_validator
-  path.config: "/usr/share/logstash/pipeline/ton_validator.conf"
+  path.config: "/usr/share/logstash/pipeline/ton_validator/"
 - pipeline.id: ton_control
-  path.config: "/usr/share/logstash/pipeline/ton_control.conf"
+  path.config: "/usr/share/logstash/pipeline/ton_control/"
+  pipeline.workers: 1

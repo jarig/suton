@@ -23,7 +23,7 @@ def main():
     parser.add_argument('--work_dir', dest='work_dir', default='/var/ton-control',
                         help='Working directory for ton-control service')
     parser.add_argument('--log_path', dest='log_path', default='/var/ton-control/log', help='Path to log file')
-    parser.add_argument("--keys_dir", default='/var/ton-control/keys',
+    parser.add_argument("--keys_dir", default='/var/ton-control/configs/keys',
                         help="Path to toncontrol keys folder, copied from hosted machine")
     parser.add_argument("--validator_wallet_seed",
                         help="Validator seed phrase or connection string")
@@ -114,29 +114,30 @@ def main():
                                                           server_addr=args.validator_network_address)
 
     log.info("Initializing LogStash client...")
-    LogStashClient.configure_client(None, None)
+    LogStashClient.configure_client("tonlogstash", 5959)
 
     log.info("Starting routines...")
     LogStashClient.start_client()
     # Validator
-    ElectionsRoutine(work_dir=os.path.join(args.work_dir, "elections"),
-                     validation_engine_console=validation_engine_console,
-                     lite_client=lite_client,
-                     tonos_cli=tonos_cli,
-                     fift_cli=fift_cli,
-                     secret_manager=secret_manager,
-                     min_sync_time=args.validator_min_sync_diff,
-                     stake_to_make=args.default_election_stake,
-                     stake_max_factor=args.stake_max_factor
-                     ).start()
+    elections_routine = ElectionsRoutine(work_dir=os.path.join(args.work_dir, "elections"),
+                                         validation_engine_console=validation_engine_console,
+                                         lite_client=lite_client,
+                                         tonos_cli=tonos_cli,
+                                         fift_cli=fift_cli,
+                                         secret_manager=secret_manager,
+                                         min_sync_time=args.validator_min_sync_diff,
+                                         stake_to_make=args.default_election_stake,
+                                         stake_max_factor=args.stake_max_factor).start()
     # Queue
-    QueueRoutine(validation_engine_console=validation_engine_console,
+    QueueRoutine(elections_routine=elections_routine,
+                 validation_engine_console=validation_engine_console,
                  queue_provider=queue_provider).start()
     log.info("All routines started")
 
     while True:
         try:
             log.info("Still alive")
+            LogStashClient.get_client().send_data('main', {"heartbeat": True})
             # main routine
             time.sleep(60)
         except Exception:
@@ -154,6 +155,9 @@ def configure_logging(log_dir):
         },
         "toncontrol | qcontroller": {
             "propagate": True
+        },
+        "logstash_client": {
+            "file": "telemetry.log"
         },
         # external libs
         "tonvalidator": {}

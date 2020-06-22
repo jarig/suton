@@ -11,15 +11,19 @@ then
   pip3 install $TON_CONTROL_SECRET_MANAGER_PROVIDER_PIP_PACKAGE
 fi
 
-work_dir="/var/ton-control/${TON_ENV}"
+work_base_dir="/var/ton-control"
+control_key_pick_up_dir="$work_base_dir/configs/keys"
+work_dir="$work_base_dir/${TON_ENV}"
 sudo mkdir -p "$work_dir"
 sudo chown toncontrol:toncontrol -R "$work_dir"
 
 keys_dir="/var/ton-control-keys/${TON_ENV}"
+
+# Pickup toncontrol encryption keys
 sudo mkdir -p "$keys_dir"
-if [[ -d "$work_dir/keys" && -n "$(ls -A $work_dir/keys)" ]]; then
-  echo "Moving keys to toncontrol keys volume..."
-  sudo mv -f $work_dir/keys/* "$keys_dir/"
+if [[ -d "$control_key_pick_up_dir" && -n "$(ls -A $control_key_pick_up_dir)" ]]; then
+  echo "Copying keys to toncontrol keys volume..."
+  sudo cp -f $control_key_pick_up_dir/* "$keys_dir/"
   echo "Available keys:"
   ls $keys_dir
 fi
