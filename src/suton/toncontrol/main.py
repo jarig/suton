@@ -23,7 +23,7 @@ def main():
     parser.add_argument('--work_dir', dest='work_dir', default='/var/ton-control',
                         help='Working directory for ton-control service')
     parser.add_argument('--log_path', dest='log_path', default='/var/ton-control/log', help='Path to log file')
-    parser.add_argument("--keys_dir", default='/var/ton-control/keys',
+    parser.add_argument("--keys_dir", default='/var/ton-control/configs/keys',
                         help="Path to toncontrol keys folder, copied from hosted machine")
     parser.add_argument("--validator_wallet_seed",
                         help="Validator seed phrase or connection string")

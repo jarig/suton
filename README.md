@@ -9,8 +9,8 @@ Status:
 - :heavy_check_mark: TonControl deployment
 - :heavy_check_mark: TonControl can track for validator health and its sync status
 - :heavy_check_mark: TonControl automates participation in elections
+- :heavy_check_mark: TonControl reports telemetry via LogStash using TCP protocol
 - **=== We are here ===**
-- :clock1: TonControl reports telemetry via LogStash using TCP protocol
 - :clock1: LogStash publishing parsed tonvalidator logs
 - :clock1: Extendable TonControl with own secret-managers
 - :clock1: TonControl can send notifications to service-bus
@@ -28,7 +28,7 @@ Status:
   Remove this ssh access once setup is finished (or revoke root perms for the account used).
   *Root access will be required by Docker, so that it would be able to connect to remote Docker daemon and build/run images.*
 - Prepare you validator machine which should have dedicated place for Ton work-dir (500GB-1TB SSD), and work-dir for ton-controller (no special requirements). 
-- Optional: generate RSA keys, place private key to `<ton-controller-work-dir/keys>`. 
+- Optional: generate RSA keys, place private key to `<ton-controller-work-dir/configs/keys>`. 
   Encrypt your wallet seed with public key and convert to base64 format, [details here](#seed-encryption).
 
 Create following project structure:
@@ -73,7 +73,15 @@ class NodeSettings(TonSettings):
 ```
 More info about possible settings options and [seed encryption](#seed-encryption) described here in the [settings](#settings) section.
 
-And to `requirements.txt`
+Note: `TON_WORK_DIR` and `TON_CONTROL_WORK_DIR` should be pre-created on Host machine.
+Also based on other settings you might put extra configuration files into them such as `configs/logstash` for controlling logstash outputs or `configs/keys` for encryption functionality.
+Once all files in place grant `ton` and `toncontrol` users permissions to respected work folders:
+```bash
+$ chown 1001:1001 /path/to/ton-work-dir
+$ chown 1002:1002 /path/to/ton-control-dir
+```
+
+Create in your local setup `requirements.txt` with
 ```requirements.txt
 git+git://github.com/jarig/suton@master#egg=suton
 ```
@@ -82,11 +90,13 @@ Then run:
 1. `$ pip install -r requirements.txt`
 1. `$ python manage.py --node=node-1 run`
    
-   Note: at a moment `tonvalidator` and `toncontrol` are deployable services, so you can run
+   Note: at a moment `tonvalidator`, `toncontrol` and `tonlogstash` are deployable services, so you can run
    
    `$ python manage.py --node=node-1 run --build --service tonvalidator`
    
    `$ python manage.py --node=node-1 run --build --service toncontrol`
+   
+   `$ python manage.py --node=node-1 run --build --service tonlogstash`
 
 # Architecture
 
@@ -122,14 +132,14 @@ class NodeSettings(TonSettings):
     TON_WORK_DIR = "/data/ton-work"
     # working directory on HOST machine for ton-control
     # Logs will be written under this location (under /log subdir), also ton-control might pick-up keys
-    # from under $TON_CONTROL_WORK_DIR/keys for use by secret-manager
+    # from under $TON_CONTROL_WORK_DIR/configs/keys for use by secret-manager
     TON_CONTROL_WORK_DIR = "/data/ton-control"
     # Either dict/json data that will be passed to default secret-manager (EnvProvider) 
     # or can be connection-string for Keyvault type of secret-managers
     TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING = {
         "validator_seed": '<seed phrase or encrypted seed phrase>',
         "validator_address": "-1:<validator address>",
-        # optional name of a private key you placed under $TON_CONTROL_WORK_DIR/keys
+        # optional name of a private key you placed under $TON_CONTROL_WORK_DIR/configs/keys
         # by specifying it you suppose to encrypt with appropriate public key and convert to base64 validator_seed and custodian_seeds entries.
         "encryption_key_name": "",
         # list of custodian seeds that want to automate approvals on their behalf
@@ -161,7 +171,31 @@ $ echo '<seed phrase>' | openssl rsautl -encrypt -pubin -inkey ./pub.pem |openss
 $ echo "<base64_output>" |base64 -d | openssl rsautl -decrypt -inkey key.pem
 ```
 
-Your private key (`key.pem` in the example above) should be placed to `<ton_control_work_dir>/keys` folder and its name saved in `TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING` json of `NodeSettings` class under `encryption_key_name` key of json payload.
+Your private key (`key.pem` in the example above) should be placed to `<ton_control_work_dir>/configs/keys` folder and its name saved in `TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING` json of `NodeSettings` class under `encryption_key_name` key of json payload.
+
+## LogStash Monitoring
+
+Logstash image going to collect sent to it telemetry from `toncontrol` (being send via TCP) and from `tonvalidator` (log parsing).
+
+Inputs and basic filters configured for both, but for desired output you would need to create configuration.
+Logstash image has 2 pipelines (`toncontrol` and `tonvalidator` ones), each can have own configuration.
+
+### TonControl configuration
+
+Picked up from `<ton_control_workdir>/configs/logstash`
+
+Example configuration:
+```ruby
+output {
+  elasticsearch {
+    hosts => ["https://<cluster>.bonsaisearch.net:443"]
+    ssl   => true
+    index => "logstash-suton-%{+YYYY.MM}"
+  }
+}
+```
+[Bonsai.io](https://bonsai.io/) providing free tier where you can send logstash data and get Kibana dashboard very fast.
+
 
 
 ## SuTon CLI Commands

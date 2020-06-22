@@ -9,22 +9,27 @@ RUN rm -f /usr/share/logstash/config/pipelines.yml
 RUN rm -f /usr/share/logstash/config/logstash-full.yml
 RUN rm -f /usr/share/logstash/config/logstash-oss.yml
 
-# Copy configs
-ADD pipeline /usr/share/logstash/pipeline
-ADD config /usr/share/logstash/config
-
 USER root
 RUN groupadd --gid "$TON_USER_GID" ton
 RUN usermod -a -G ton logstash
 RUN logstash-plugin install logstash-output-kusto
-#COPY entry.sh /usr/local/bin/docker-entrypoint
-#RUN chmod 0755 /usr/local/bin/docker-entrypoint
+COPY entry.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/entry.sh
+
+RUN yum update -y && yum install -y sudo
+RUN echo "logstash ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
 
 USER logstash
-ENV TON_WORK_DIR=/var/ton-work
-ENV TON_LOG_DIR=/var/ton-work/log
-ENV TON_CONTROL_LOG_DIR=/var/ton-control/log
-ENV LOGSTASH_ELASTIC_HOST=""
-ENV APP_INSIGHTS_KEY=""
-ENV ELASTIC_INDEX_NAME="logstash-suton-%{+YYYY.MM.dd}"
 
+# Copy configs
+ADD pipeline /usr/share/logstash/pipeline
+ADD config /usr/share/logstash/config
+
+
+ENV TON_WORK_DIR=/var/ton-work
+ENV TON_CONTROL_WORK_DIR=/var/ton-control
+ENV TON_LOG_DIR=$TON_WORK_DIR/log
+ENV TON_CONTROL_LOG_DIR=$TON_CONTROL_WORK_DIR/log
+
+ENTRYPOINT ["/usr/local/bin/entry.sh"]

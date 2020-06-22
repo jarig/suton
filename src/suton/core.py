@@ -23,9 +23,6 @@ class TonSettings(object):
     TONOS_CLI_CONFIG_URL = None
     TON_CONTROL_STAKE_MAX_FACTOR = None
 
-    # Logstash
-    LOGSTASH_ELASTIC_HOST = None
-
     def validate(self):
         if self.TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING is None:
             raise Exception("You need to set secret-manager connection string value")
@@ -33,11 +30,18 @@ class TonSettings(object):
 
 class TonManage(object):
 
-    def get_settings(self, settings_path="") -> TonSettings:
+    def get_node_settings(self, settings_path="") -> TonSettings:
         mod = importlib.import_module("{}.settings".format(settings_path))
         return mod.NodeSettings()
 
     def extra_args(self, parser):
+        pass
+
+    def pre_execute(self, node_settings: TonSettings):
+        """
+        Hook that is called before main docker command is executed.
+        For example you can transfer some files via ssh (ex logstash configs or keys) before image starts.
+        """
         pass
 
     def _execute(self, args, cwd, env=None, timeout=None):
@@ -68,38 +72,37 @@ class TonManage(object):
             args = parser.parse_args()
         if args.node:
             # load settings
-            settings = self.get_settings(args.node)
+            node_settings = self.get_node_settings(args.node)
         else:
-            settings = self.get_settings()
-        settings.validate()
+            node_settings = self.get_node_settings()
+        node_settings.validate()
         cenv = os.environ.copy()
-        connection_string = settings.TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING
+        connection_string = node_settings.TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING
         if isinstance(connection_string, dict):
             connection_string = json.dumps(connection_string)
         cenv['TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING'] = connection_string
-        if settings.DOCKER_HOST:
-            cenv['DOCKER_HOST'] = settings.DOCKER_HOST
-        cenv['TON_WORK_DIR'] = settings.TON_WORK_DIR
-        cenv['TON_CONTROL_WORK_DIR'] = settings.TON_CONTROL_WORK_DIR
-        if settings.TON_ENV:
-            cenv['TON_ENV'] = settings.TON_ENV
-        if settings.TON_VALIDATOR_CONFIG_URL:
-            cenv['TON_VALIDATOR_CONFIG_URL'] = settings.TON_VALIDATOR_CONFIG_URL
-        if settings.TON_CONTROL_DEFAULT_STAKE:
-            cenv['TON_CONTROL_DEFAULT_STAKE'] = settings.TON_CONTROL_DEFAULT_STAKE
-        if settings.TON_CONTROL_STAKE_MAX_FACTOR:
-            cenv['TON_CONTROL_STAKE_MAX_FACTOR'] = settings.TON_CONTROL_STAKE_MAX_FACTOR
-        if settings.TONOS_CLI_CONFIG_URL:
-            cenv['TONOS_CLI_CONFIG_URL'] = settings.TONOS_CLI_CONFIG_URL
-        if settings.TON_CONTROL_QUEUE_NAME:
-            cenv['TON_CONTROL_QUEUE_NAME'] = settings.TON_CONTROL_QUEUE_NAME
-        elif settings.NODE_NAME:
-            cenv['TON_CONTROL_QUEUE_NAME'] = "node-{}".format(settings.NODE_NAME)
+        if node_settings.DOCKER_HOST:
+            cenv['DOCKER_HOST'] = node_settings.DOCKER_HOST
+        cenv['TON_WORK_DIR'] = node_settings.TON_WORK_DIR
+        cenv['TON_CONTROL_WORK_DIR'] = node_settings.TON_CONTROL_WORK_DIR
+        if node_settings.TON_ENV:
+            cenv['TON_ENV'] = node_settings.TON_ENV
+        if node_settings.TON_VALIDATOR_CONFIG_URL:
+            cenv['TON_VALIDATOR_CONFIG_URL'] = node_settings.TON_VALIDATOR_CONFIG_URL
+        if node_settings.TON_CONTROL_DEFAULT_STAKE:
+            cenv['TON_CONTROL_DEFAULT_STAKE'] = node_settings.TON_CONTROL_DEFAULT_STAKE
+        if node_settings.TON_CONTROL_STAKE_MAX_FACTOR:
+            cenv['TON_CONTROL_STAKE_MAX_FACTOR'] = node_settings.TON_CONTROL_STAKE_MAX_FACTOR
+        if node_settings.TONOS_CLI_CONFIG_URL:
+            cenv['TONOS_CLI_CONFIG_URL'] = node_settings.TONOS_CLI_CONFIG_URL
+        if node_settings.TON_CONTROL_QUEUE_NAME:
+            cenv['TON_CONTROL_QUEUE_NAME'] = node_settings.TON_CONTROL_QUEUE_NAME
+        elif node_settings.NODE_NAME:
+            cenv['TON_CONTROL_QUEUE_NAME'] = "node-{}".format(node_settings.NODE_NAME)
         else:
             cenv['TON_CONTROL_QUEUE_NAME'] = "node-{}".format(args.node)
 
-        if settings.LOGSTASH_ELASTIC_HOST:
-            cenv['LOGSTASH_ELASTIC_HOST'] = settings.LOGSTASH_ELASTIC_HOST
+        self.pre_execute(node_settings)
 
         docker_args = []
         if args.parser_name == "docker":

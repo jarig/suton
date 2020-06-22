@@ -33,15 +33,17 @@ services:
         TON_USER_GID: ${HOST_TON_GROUP_ID}
     volumes:
       - type: bind
-        source: ${TON_WORK_DIR}/${TON_ENV}
+        source: ${TON_WORK_DIR}
         target: /var/ton-work
       - type: bind
         source: ${TON_CONTROL_WORK_DIR}
         target: /var/ton-control
     environment:
-      - TON_LOG_DIR=/var/ton-work/log
-      - TON_CONTROL_LOG_DIR=/var/ton-control/log
-      - LOGSTASH_ELASTIC_HOST=${LOGSTASH_ELASTIC_HOST}
+      - TON_ENV=${TON_ENV}
+      - TON_WORK_DIR=/var/ton-work
+      - TON_CONTROL_WORK_DIR=/var/ton-control
+      - TON_LOG_DIR=/var/ton-work/${TON_ENV}/log
+      - TON_CONTROL_LOG_DIR=/var/ton-control/${TON_ENV}/log
   toncontrol:
     image: toncontrol:latest
     restart: always

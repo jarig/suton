@@ -143,7 +143,7 @@ class ElectionsRoutine(object):
         return False
 
     def _send_telemetry(self, data_type, data: dict):
-        data['timestamp'] = datetime.datetime.utcnow().strftime("%Y-%M-%d %H:%M:%S")
+        data['timestamp'] = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         data['data_type'] = data_type
         LogStashClient.get_client().send_data('elections', data)
 
@@ -177,12 +177,15 @@ class ElectionsRoutine(object):
                         # cleanup current active elections
                         finished_elections = []
                         for active_election in self._active_elections:
-                            self._send_telemetry('active_elections', {
+                            telemetry_data = {
                                 'election_id': active_election.election_id,
                                 'election_stake': active_election.election_stake
-                            })
+                            }
                             if str(active_election.election_id) not in election_ids:
                                 finished_elections.append(active_election)
+                                self._send_telemetry('finished_elections', telemetry_data)
+                            else:
+                                self._send_telemetry('active_elections', telemetry_data)
                         if not election_ids:
                             log.info("No elections happening at a moment.")
                         else:
