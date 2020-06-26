@@ -4,7 +4,9 @@ import logging
 import os
 import threading
 import time
+from typing import List
 
+from routines.models.elections import Election
 from secrets.interfaces.secretmanager import SecretManagerAbstract
 from toncommon.models.TonAddress import TonAddress
 from toncommon.models.TonCoin import TonCoin
@@ -21,42 +23,6 @@ log = logging.getLogger("elections")
 
 class ElectionsRoutine(object):
 
-    class Election(object):
-        def __init__(self, election_id, elector_addr, key=None, adnl_key=None, election_stake: int = 0):
-            self.election_id = election_id
-            self.key = key
-            self.adnl_key = adnl_key
-            self.elector_addr = elector_addr
-            self.election_stake = election_stake
-            self.restake = False
-
-        @staticmethod
-        def from_json(data):
-            election = ElectionsRoutine.Election(election_id=data['id'],
-                                                 elector_addr=data['elector_addr'],
-                                                 key=data.get('key'),
-                                                 adnl_key=data.get('adnl_key'),
-                                                 election_stake=data.get('election_stake', 0))
-            if data.get('restake'):
-                election.restake = True
-            return election
-
-        def to_json(self):
-            return {
-                'id': self.election_id,
-                'key': self.key,
-                'adnl_key': self.adnl_key,
-                'elector_addr': self.elector_addr,
-                'election_stake': self.election_stake,
-                'restake': self.restake
-            }
-
-        def __str__(self):
-            return "[{}] {}".format(self.election_id, self.elector_addr)
-
-        def __repr__(self):
-            return str(self)
-
     def __init__(self,
                  work_dir: str,
                  validation_engine_console: TonValidatorEngineConsole,
@@ -65,7 +31,7 @@ class ElectionsRoutine(object):
                  fift_cli: FiftCli,
                  secret_manager: SecretManagerAbstract,
                  stake_to_make="30%",  # either % or absolute value
-                 min_sync_time=50,
+                 max_sync_diff=50,
                  min_balance: int = 0,
                  stake_max_factor: str = '3',
                  join_elections=True):
@@ -75,12 +41,12 @@ class ElectionsRoutine(object):
         self._tonos_cli = tonos_cli
         self._fift_cli = fift_cli
         self._secret_manager = secret_manager
-        self._min_sync_time = min_sync_time
+        self._max_sync_diff = max_sync_diff
         self._min_balance = min_balance
         self._stake_to_make = stake_to_make
         self._stake_max_factor = stake_max_factor
         self._join_elections = join_elections
-        self._active_elections: list[ElectionsRoutine.Election] = []
+        self._active_elections: list[Election] = []
         self._active_election_file = os.path.join(self._work_dir, "active_elections.json")
         self._check_node_sync_interval_seconds = 2 * 60
         self._check_elections_interval_seconds = 15 * 60
@@ -90,7 +56,7 @@ class ElectionsRoutine(object):
             with open(self._active_election_file) as f:
                 election_data = json.load(f)
             for election in election_data['elections']:
-                self._active_elections.append(ElectionsRoutine.Election.from_json(election))
+                self._active_elections.append(Election.from_json(election))
         return self._active_elections
 
     def save_active_elections(self):
@@ -133,8 +99,9 @@ class ElectionsRoutine(object):
         try:
             time_diff = self._vec.get_sync_time_diff()
             log.debug("Time diff: {}".format(time_diff))
-            self._send_telemetry('node_status', {'time_diff': time_diff})
-            if time_diff <= self._min_sync_time:
+            self._send_telemetry('node_status', {'time_diff': time_diff,
+                                                 'max_sync_diff': self._max_sync_diff})
+            if time_diff <= self._max_sync_diff:
                 return True
         except TonConnectionException as ex:
             log.error("Failed to connect to TON Validator: {}".format(ex))
@@ -176,26 +143,34 @@ class ElectionsRoutine(object):
                                                           'election_ids': election_ids}
                         # cleanup current active elections
                         finished_elections = []
+                        active_election_stakes = 0
                         for active_election in self._active_elections:
                             telemetry_data = {
                                 'election_id': active_election.election_id,
-                                'election_stake': active_election.election_stake
+                                'election_stake': active_election.election_stake,
+                                'election_state': active_election.get_state()
                             }
-                            if str(active_election.election_id) not in election_ids:
+                            active_election_stakes += active_election.election_stake
+                            if str(active_election.election_id) not in election_ids and active_election.can_return():
                                 finished_elections.append(active_election)
                                 self._send_telemetry('finished_elections', telemetry_data)
                             else:
+                                log.info("Active election: {}".format(active_election))
                                 self._send_telemetry('active_elections', telemetry_data)
+                        recovered_stake = 0
+                        if finished_elections:
+                            log.info("Finished elections: {}".format(finished_elections))
+                            recovered_stake = self._recover_stakes(validator_addr, finished_elections)
                         if not election_ids:
                             log.info("No elections happening at a moment.")
                         else:
                             log.info("Current active elections: {}".format(election_ids))
-                            new_elections = []  # type: list[ElectionsRoutine.Election]
+                            new_elections = []  # type: List[Election]
                             for eid in election_ids:
                                 active_election = self._get_active_election_by_id(eid)
                                 if not active_election:
-                                    new_elections.append(ElectionsRoutine.Election(election_id=eid,
-                                                                                   elector_addr=elector_addr))
+                                    new_elections.append(Election(election_id=eid,
+                                                                  elector_addr=elector_addr))
                                 elif active_election.restake:
                                     log.info("Will re-stake for {}".format(active_election))
                                     # reset restake flag
@@ -209,18 +184,19 @@ class ElectionsRoutine(object):
                                 log.info("Going to join these elections: {}".format(new_elections))
                                 log.info("Getting min stake...")
                                 stake_params = self._lite_client.get_stake_params()
+                                stake_per_election = (validator_balance + recovered_stake + active_election_stakes) / len(new_elections)
                                 for new_election in new_elections:
-                                    stake_per_election = validator_balance / len(new_elections)
                                     election_stake = self._compute_stake(stake_per_election)
                                     election_telemetry = {
                                         'election_id': new_election.election_id
                                     }
-                                    if balance_left < self._min_balance:
+                                    if (balance_left - election_stake) < self._min_balance:
                                         election_telemetry['error'] = 'Not enough balance'
                                         log.warning("Skipping participation in {}, as otherwise will go below minimum specified balance ({})".format(new_election.election_id,
                                                                                                                                                      self._min_balance))
                                         continue
-                                    log.info("Joining election: {} with stake {}".format(new_election.election_id, election_stake))
+                                    log.info("Joining election: {} with stake {}".format(new_election.election_id,
+                                                                                         election_stake))
                                     if stake_params:
                                         log.info("Got stake params")
                                         election_telemetry['min_stake'] = stake_params.min_stake
@@ -252,6 +228,7 @@ class ElectionsRoutine(object):
                                                              elector_params.validators_elected_for + \
                                                              elector_params.elections_end_before + \
                                                              elector_params.stake_held_for
+                                        new_election.set_election_params(elector_params)
                                         if need_election_prepare:
                                             log.info("Preparing election request...")
                                             self._vec.prepare_election(new_election.key, new_election.adnl_key,
@@ -296,39 +273,6 @@ class ElectionsRoutine(object):
                                         self._cleanup_election(new_election)
                                         raise
                                     self._send_telemetry('election_join', election_telemetry)
-                        if finished_elections:
-                            log.info("Finished elections: {}".format(finished_elections))
-                            finished_election_map = {}
-                            for finished_election in finished_elections:
-                                elect_arr = finished_election_map.setdefault(finished_election.elector_addr, [])
-                                elect_arr.append(finished_election)
-                            for finish_elector_addr in finished_election_map:
-                                try:
-                                    log.info("Requesting bounty from: {}".format(finish_elector_addr))
-                                    # no election happening
-                                    recover_amounts = self._lite_client.compute_returned_stakes(finish_elector_addr, validator_addr)
-                                    if recover_amounts:
-                                        log.info("Recovering: {}".format(recover_amounts))
-                                        recover_req = self._fift_cli.generate_recover_stake_req()
-                                        transaction = self._tonos_cli.submitTransaction(validator_addr,
-                                                                                        TonAddress.set_address_prefix(finish_elector_addr, TonAddress.Type.MASTER_CHAIN),
-                                                                                        value=TonCoin.convert_to_nano_tokens(1),
-                                                                                        payload=recover_req,
-                                                                                        private_key=self._get_wallet_seed(),
-                                                                                        bounce=True)
-                                        log.info("Submitted transaction for funds recovery: {}".format(transaction))
-                                        log.info("Removing unused keys")
-                                        for felection in finished_election_map[finish_elector_addr]:
-                                            self._cleanup_election(felection)
-                                            self._active_elections.remove(felection)
-                                        self._send_telemetry('stake_recover', {
-                                            'elector_addr': finish_elector_addr,
-                                            'recover_amount': sum(int(amount) for amount in recover_amounts)
-                                        })
-                                    else:
-                                        log.info("Nothing to recover: {}".format(recover_amounts))
-                                except Exception as ex:
-                                    log.exception("Failed to request bounty: {}".format(ex))
                         self.save_active_elections()
             except Exception as ex:
                 election_status_telemetry_data['error'] = str(ex)
@@ -337,4 +281,48 @@ class ElectionsRoutine(object):
             log.info("Sleeping for: {}s, next check after {}".format(sleep_interval,
                                                                      datetime.datetime.now() + datetime.timedelta(seconds=sleep_interval)))
             time.sleep(sleep_interval)
+
+    def _recover_stakes(self, validator_addr: str, finished_elections: List[Election]) -> int:
+        """
+        Check if possible to retrieve some stakes back from given list of elections
+        :param validator_addr: Validator(node) address
+        :param finished_elections: List of finished elections
+        :return:
+        """
+        recovered_stake = 0
+        finished_election_map = {}
+        for finished_election in finished_elections:
+            elect_arr = finished_election_map.setdefault(finished_election.elector_addr, [])
+            elect_arr.append(finished_election)
+        for finish_elector_addr in finished_election_map:
+            try:
+                log.info("Requesting bounty from: {}".format(finish_elector_addr))
+                # no election happening
+                recover_amounts = self._lite_client.compute_returned_stakes(finish_elector_addr, validator_addr)
+                if recover_amounts:
+                    log.info("Recovering: {}".format(recover_amounts))
+                    recover_req = self._fift_cli.generate_recover_stake_req()
+                    transaction = self._tonos_cli.submitTransaction(validator_addr,
+                                                                    TonAddress.set_address_prefix(finish_elector_addr,
+                                                                                                  TonAddress.Type.MASTER_CHAIN),
+                                                                    value=TonCoin.convert_to_nano_tokens(1),
+                                                                    payload=recover_req,
+                                                                    private_key=self._get_wallet_seed(),
+                                                                    bounce=True)
+                    log.info("Submitted transaction for funds recovery: {}".format(transaction))
+                    log.info("Removing unused keys")
+                    for felection in finished_election_map[finish_elector_addr]:
+                        self._cleanup_election(felection)
+                        self._active_elections.remove(felection)
+                    recover_sum = sum(int(amount) for amount in recover_amounts)
+                    self._send_telemetry('stake_recover', {
+                        'elector_addr': finish_elector_addr,
+                        'recover_amount': recover_sum
+                    })
+                    recovered_stake += recover_sum
+                else:
+                    log.info("Nothing to recover: {}".format(recover_amounts))
+            except Exception as ex:
+                log.exception("Failed to request bounty: {}".format(ex))
+        return recovered_stake
 

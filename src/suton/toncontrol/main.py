@@ -39,7 +39,7 @@ def main():
                         help="Python module path to use to import Queue provider")
     parser.add_argument("--queue_name", default='ton-validator-0', 
                         help="Name of the queue to use")
-    parser.add_argument("--validator_min_sync_diff", default=20, 
+    parser.add_argument("--validator_max_sync_diff", default=30,
                         help="Minimum time difference that validator can have to consider it as synced")
     parser.add_argument("--client_key", default='/var/ton-keys/client', help="Path to client private key")
     parser.add_argument("--server_pub_key", default='/var/ton-keys/server.pub', 
@@ -125,7 +125,7 @@ def main():
                                          tonos_cli=tonos_cli,
                                          fift_cli=fift_cli,
                                          secret_manager=secret_manager,
-                                         min_sync_time=args.validator_min_sync_diff,
+                                         max_sync_diff=args.validator_max_sync_diff,
                                          stake_to_make=args.default_election_stake,
                                          stake_max_factor=args.stake_max_factor).start()
     # Queue

@@ -17,6 +17,7 @@ services:
       - type: bind
         source: ${TON_WORK_DIR}
         target: /var/ton-work-${TON_ENV}
+        consistency: delegated
       - type: volume
         source: validator-client-keys
         target: /var/ton-client-keys-${TON_ENV}
