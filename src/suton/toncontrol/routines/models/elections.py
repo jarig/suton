@@ -1,6 +1,7 @@
 import datetime
 import time
 
+from toncommon.models.TonAddress import TonAddress
 from tonliteclient.models.ElectionParams import ElectionParams
 
 
@@ -27,12 +28,28 @@ class Election(object):
     def set_election_params(self, params: ElectionParams):
         self.election_params = params
 
+    def get_election_end_time(self) -> int:
+        if self.election_params:
+            return int(self.election_id) - self.election_params.elections_end_before
+        return 0
+
+    def get_validation_end_time(self) -> int:
+        if self.election_params:
+            return self.get_election_end_time() + self.election_params.validators_elected_for
+        return 0
+
+    def get_reward_time(self) -> int:
+        if self.election_params:
+            frozen_until = self.get_validation_end_time() + self.election_params.stake_held_for
+            return frozen_until
+        return 0
+
     def get_state(self):
         if self.election_params:
             now_timestamp = time.time()
-            election_end = int(self.election_id) - self.election_params.elections_end_before
-            validation_end = int(self.election_id) + self.election_params.validators_elected_for
-            frozen_until = validation_end + self.election_params.stake_held_for
+            election_end = self.get_election_end_time()
+            validation_end = self.get_validation_end_time()
+            frozen_until = self.get_reward_time()
             if now_timestamp > frozen_until:
                 return Election.State.REWARD
             elif now_timestamp > validation_end:
@@ -78,7 +95,8 @@ class Election(object):
         return data
 
     def __str__(self):
-        return "[{}] [{}] {}".format(self.election_id, self.get_state(), self.elector_addr)
+        return "[{}] [{}] [{}] [{}]".format(self.election_id, self.get_state(),
+                                            TonAddress.get_short_address(self.elector_addr), self.get_reward_time())
 
     def __repr__(self):
         return str(self)

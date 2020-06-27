@@ -22,6 +22,11 @@ class TonSettings(object):
     TON_CONTROL_QUEUE_NAME = None
     TONOS_CLI_CONFIG_URL = None
     TON_CONTROL_STAKE_MAX_FACTOR = None
+    TON_CONTROL_VALIDATOR_NETWORK_ADDR = None
+    TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR = None
+    TON_CONTROL_CLIENT_KEY_PATH = None
+    TON_CONTROL_SERVER_PUB_KEY_PATH = None
+    TON_CONTROL_LITE_SERVER_PUB_KEY_PATH = None
 
     def validate(self):
         if self.TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING is None:
@@ -101,6 +106,21 @@ class TonManage(object):
             cenv['TON_CONTROL_QUEUE_NAME'] = "node-{}".format(node_settings.NODE_NAME)
         else:
             cenv['TON_CONTROL_QUEUE_NAME'] = "node-{}".format(args.node)
+
+        if node_settings.TON_CONTROL_VALIDATOR_NETWORK_ADDR:
+            cenv['TON_CONTROL_VALIDATOR_NETWORK_ADDR'] = node_settings.TON_CONTROL_VALIDATOR_NETWORK_ADDR
+
+        if node_settings.TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR:
+            cenv['TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR'] = node_settings.TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR
+
+        if node_settings.TON_CONTROL_CLIENT_KEY_PATH:
+            cenv['TON_CONTROL_CLIENT_KEY_PATH'] = node_settings.TON_CONTROL_CLIENT_KEY_PATH
+
+        if node_settings.TON_CONTROL_SERVER_PUB_KEY_PATH:
+            cenv['TON_CONTROL_SERVER_PUB_KEY_PATH'] = node_settings.TON_CONTROL_SERVER_PUB_KEY_PATH
+
+        if node_settings.TON_CONTROL_LITE_SERVER_PUB_KEY_PATH:
+            cenv['TON_CONTROL_LITE_SERVER_PUB_KEY_PATH'] = node_settings.TON_CONTROL_LITE_SERVER_PUB_KEY_PATH
 
         self.pre_execute(node_settings)
 

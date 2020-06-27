@@ -36,50 +36,34 @@ sudo mkdir -p "$work_dir/tonos_cwd"
 sudo chown toncontrol:toncontrol -R "$work_dir/tonos_cwd"
 
 
-args="--work_dir=$work_dir --log_path=$work_dir/log --queue_name=$TON_CONTROL_QUEUE_NAME --keys_dir=$keys_dir"
+args="--work_dir=$work_dir --log_path=$work_dir/log --keys_dir=$keys_dir"
 args="$args --tonos_cli_cwd=$work_dir/tonos_cwd"
 args="$args --secret_manager_connection_env=TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING"
 args="$args --tonos_cli_abi_path=$TON_CONTROL_ABI_PATH --tonos_cli_tvc_path=$TON_CONTROL_TVC_PATH"
 
-if [[ ! -z $TON_CONTROL_DEFAULT_STAKE ]]
-then
-  args="$args --default_election_stake=$TON_CONTROL_DEFAULT_STAKE"
-fi
+add_argument () {
+  name=$1
+  value=$2
 
-if [[ ! -z $TON_CONTROL_STAKE_MAX_FACTOR ]]
-then
-  args="$args --stake_max_factor=$TON_CONTROL_STAKE_MAX_FACTOR"
-fi
+  if [[ ! -z $value ]]
+  then
+    args="$args --$name=$value"
+  fi
+}
 
-if [[ ! -z $FIFT_INCLUDES ]]
-then
-  args="$args --fift_includes=$FIFT_INCLUDES"
-fi
+add_argument "default_election_stake" $TON_CONTROL_DEFAULT_STAKE
+add_argument "stake_max_factor" $TON_CONTROL_STAKE_MAX_FACTOR
+add_argument "fift_includes" $FIFT_INCLUDES
+add_argument "tonos_config_url" $TONOS_CLI_CONFIG_URL
+add_argument "queue_name" $TON_CONTROL_QUEUE_NAME
+add_argument "queue_provider" $TON_CONTROL_QUEUE_PROVIDER_IMPORT_PATH
+add_argument "secret_manager_provider" $TON_CONTROL_SECRET_MANAGER_IMPORT_PATH
+add_argument "validator_network_address" $TON_CONTROL_VALIDATOR_NETWORK_ADDR
+add_argument "lite_client_network_address" $TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR
+add_argument "client_key" $TON_CONTROL_CLIENT_KEY_PATH
+add_argument "server_pub_key" $TON_CONTROL_SERVER_PUB_KEY_PATH
+add_argument "lite_server_pub_key" $TON_CONTROL_LITE_SERVER_PUB_KEY_PATH
 
-if [[ ! -z $TONOS_CLI_CONFIG_URL ]]
-then
-  args="$args --tonos_config_url=$TONOS_CLI_CONFIG_URL"
-fi
-
-if [[ ! -z $TON_CONTROL_QUEUE_NAME ]]
-then
-  args="$args --queue_name=$TON_CONTROL_QUEUE_NAME"
-fi
-
-if [[ ! -z $TON_CONTROL_QUEUE_PROVIDER_IMPORT_PATH ]]
-then
-  args="$args --queue_provider=$TON_CONTROL_QUEUE_PROVIDER_IMPORT_PATH"
-fi
-
-if [[ ! -z $TON_CONTROL_SECRET_MANAGER_IMPORT_PATH ]]
-then
-  args="$args --secret_manager_provider=$TON_CONTROL_SECRET_MANAGER_IMPORT_PATH"
-fi
-
-if [[ ! -z $TON_VALIDATOR_NETWORK_ADDR ]]
-then
-  args="$args --validator_network_address=$TON_VALIDATOR_NETWORK_ADDR"
-fi
 
 echo "./main.py $args"
 python3 ./main.py $args

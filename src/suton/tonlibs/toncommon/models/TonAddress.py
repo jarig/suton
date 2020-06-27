@@ -10,6 +10,10 @@ class TonAddress(object):
         self.address = address
 
     @staticmethod
+    def get_short_address(adr: str):
+        return '{}..{}'.format(adr[:6], adr[-3:])
+
+    @staticmethod
     def set_address_prefix(adr: str, prefix):
         # remove all possible existing prefixes first
         adr = adr.replace("-1:", "", 1)

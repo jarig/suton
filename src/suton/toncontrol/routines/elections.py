@@ -155,7 +155,7 @@ class ElectionsRoutine(object):
                                 finished_elections.append(active_election)
                                 self._send_telemetry('finished_elections', telemetry_data)
                             else:
-                                log.info("Active election: {}".format(active_election))
+                                log.info("Participating election: {}".format(active_election))
                                 self._send_telemetry('active_elections', telemetry_data)
                         recovered_stake = 0
                         if finished_elections:
