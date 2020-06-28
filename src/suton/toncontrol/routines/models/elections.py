@@ -35,7 +35,7 @@ class Election(object):
 
     def get_validation_end_time(self) -> int:
         if self.election_params:
-            return self.get_election_end_time() + self.election_params.validators_elected_for
+            return int(self.election_id) + self.election_params.validators_elected_for
         return 0
 
     def get_reward_time(self) -> int:

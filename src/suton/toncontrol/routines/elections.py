@@ -184,16 +184,21 @@ class ElectionsRoutine(object):
                                 log.info("Going to join these elections: {}".format(new_elections))
                                 log.info("Getting min stake...")
                                 stake_params = self._lite_client.get_stake_params()
+                                log.info("Getting elector params...")
+                                elector_params = self._lite_client.get_elector_params()
                                 stake_per_election = (validator_balance + recovered_stake + active_election_stakes) / len(new_elections)
                                 for new_election in new_elections:
+                                    new_election.set_election_params(elector_params)
                                     election_stake = self._compute_stake(stake_per_election)
                                     election_telemetry = {
                                         'election_id': new_election.election_id
                                     }
                                     if (balance_left - election_stake) < self._min_balance:
                                         election_telemetry['error'] = 'Not enough balance'
-                                        log.warning("Skipping participation in {}, as otherwise will go below minimum specified balance ({})".format(new_election.election_id,
-                                                                                                                                                     self._min_balance))
+                                        log.warning(
+                                            "Skipping participation in {}, as otherwise will go below minimum specified balance ({}). Consider lowering stake.".format(
+                                                new_election.election_id,
+                                                self._min_balance))
                                         continue
                                     log.info("Joining election: {} with stake {}".format(new_election.election_id,
                                                                                          election_stake))
@@ -223,12 +228,10 @@ class ElectionsRoutine(object):
                                     log.info("ADNL key hash: {}".format(new_election.adnl_key))
                                     try:
                                         log.info("Getting elector params...")
-                                        elector_params = self._lite_client.get_elector_params()
                                         election_stop_time = int(new_election.election_id) + 1000 + elector_params.elections_start_before + \
                                                              elector_params.validators_elected_for + \
                                                              elector_params.elections_end_before + \
                                                              elector_params.stake_held_for
-                                        new_election.set_election_params(elector_params)
                                         if need_election_prepare:
                                             log.info("Preparing election request...")
                                             self._vec.prepare_election(new_election.key, new_election.adnl_key,
