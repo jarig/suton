@@ -51,7 +51,7 @@ class TonManage(object):
 
     def _execute(self, args, cwd, env=None, timeout=None):
         print("Running {} in {}".format(args, cwd))
-        proc = subprocess.run(args, cwd=cwd, env=env, shell=True)
+        proc = subprocess.run(args, cwd=cwd, env=env)
         return proc.returncode
     
     def _get_path(self, folder):
