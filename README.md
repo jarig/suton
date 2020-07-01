@@ -34,6 +34,8 @@ Status:
 Create following project structure:
 ```text
 node-1/
+      configs/        (optional)
+          logstash/   # logstash configs should be under this directory
       settings.py
 manage.py
 requirements.txt
@@ -88,15 +90,16 @@ git+git://github.com/jarig/suton@master#egg=suton
 
 Then run:
 1. `$ pip install -r requirements.txt`
-1. `$ python manage.py --node=node-1 run`
+1. `$ python manage.py --node=node-1 run --build`
    
-   Note: at a moment `tonvalidator`, `toncontrol` and `tonlogstash` are deployable services, so you can run
+   Or if you want to run them separately:
    
    `$ python manage.py --node=node-1 run --build --service tonvalidator`
    
    `$ python manage.py --node=node-1 run --build --service toncontrol`
    
    `$ python manage.py --node=node-1 run --build --service tonlogstash`
+
 
 # Architecture
 
@@ -105,9 +108,8 @@ Then run:
 Notes:
 - Validator node doesn’t have any extra ports exposed
 - Every deployment can be scaled independently and whenever is required
-- Very flexible in controlling costs - Validator, Controller and Logstash are deployed via Docker (backed-up with docker-compose) either to bare-metal machine or VM. (Ansible can help in some maintenance later on, I’ve excluded Terraform as it’s not that good for bare-metal cases).
+- Very flexible in controlling costs - Validator, Controller and Logstash are deployed via Docker (backed-up with docker-compose) either to bare-metal machine or VM.
   At the same time monitoring can be either custom solution or one of SaaS solutions with pay-as-you-go subscriptions. The same applies for message-queue (either custom deployment or SaaS).
-  With the current specs for a Validator node bare-metal machines will be the most cost-effective I believe comparing to any VM in any of cloud providers.
 - Pub/Sub layer provides good abstraction and allows to inject many type of notifications and ways to control validator(s), including safe for the validator web interfaces.
 - It is easy to integrate any kind of alerting and automatic response to those alerts.
 
@@ -182,7 +184,7 @@ Logstash image has 2 pipelines (`toncontrol` and `tonvalidator` ones), each can 
 
 ### TonControl configuration
 
-Picked up from `<ton_control_workdir>/configs/logstash`
+Picked up from `<folder_with_your_node_settings_file>/configs/logstash/`
 
 Example configuration:
 ```ruby
@@ -194,6 +196,9 @@ output {
   }
 }
 ```
+
+All files will be automatically uploaded to remote server via ssh on `run` command to `<ton_control_workdir>/configs/logstash/`.
+
 [Bonsai.io](https://bonsai.io/) providing free tier where you can send logstash data and get Kibana dashboard very fast.
 
 

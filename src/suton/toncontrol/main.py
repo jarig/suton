@@ -137,7 +137,6 @@ def main():
     while True:
         try:
             log.info("Still alive")
-            LogStashClient.get_client().send_data('main', {"heartbeat": True})
             # main routine
             time.sleep(60)
         except Exception:
@@ -160,7 +159,9 @@ def configure_logging(log_dir):
             "file": "telemetry.log"
         },
         # external libs
-        "tonvalidator": {}
+        "tonvalidator | toncommon": {
+            "file": "tonutils.log"
+        }
     }
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)

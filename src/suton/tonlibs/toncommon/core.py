@@ -1,7 +1,7 @@
 import logging
 import subprocess
 
-log = logging.getLogger("")
+log = logging.getLogger("toncommon")
 
 
 class TonExec(object):
@@ -19,8 +19,6 @@ class TonExec(object):
             out = subprocess.check_output(params, timeout=timeout, cwd=cwd,
                                           # without stdin attached TON utilities failing
                                           stdin=subprocess.PIPE).decode("utf-8")
-            # TODO: remove
-            log.debug("Output: {}".format(out))
             retcode = 0
         except subprocess.CalledProcessError as e:
             retcode = e.returncode
@@ -34,5 +32,6 @@ class TonExec(object):
             retcode = -1
             out = 'Cmd: {} (TIMEOUT {})\n'.format(params, timeout)
             out += str(e)
+        log.debug("Code: {}. Output: {}".format(retcode, out))
         return retcode, out
 
