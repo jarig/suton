@@ -11,13 +11,13 @@ RUN apt-get update && \
     && useradd --uid "$HOST_TON_CONTROL_GROUP_ID" --gid "$HOST_TON_CONTROL_GROUP_ID" --create-home --shell /bin/bash toncontrol && \
     echo "toncontrol ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/main.ton.dev/ton/build/lite-client /opt/ton/lite-client
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/main.ton.dev/ton/build/validator-engine-console /opt/ton/validator-engine-console
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/main.ton.dev/ton/build/utils /opt/ton/utils
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/main.ton.dev/ton/build/crypto /opt/ton/crypto
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/main.ton.dev/ton/crypto/fift/lib /opt/ton/fift-libs/libs
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/main.ton.dev/ton/crypto/smartcont /opt/ton/fift-libs/smartcont
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/main.ton.dev/configs /opt/ton/configs
+COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/build/lite-client /opt/ton/lite-client
+COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/build/validator-engine-console /opt/ton/validator-engine-console
+COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/build/utils /opt/ton/utils
+COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/build/crypto /opt/ton/crypto
+COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/crypto/fift/lib /opt/ton/fift-libs/libs
+COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/crypto/smartcont /opt/ton/fift-libs/smartcont
+COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/configs /opt/ton/configs
 
 
 WORKDIR /tmp

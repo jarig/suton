@@ -1,6 +1,7 @@
 FROM ubuntu:18.04 as builder
 
-ARG TON_SCRIPTS_REV=master
+ARG TON_BUILD_SCRIPTS_REV=master
+ARG TON_BUILD_SCRIPTS_URL=https://github.com/tonlabs/main.ton.dev.git
 ARG HOST_USER_UID=1000
 ARG HOST_USER_GID=1000
 ENV DEBIAN_FRONTEND=noninteractive
@@ -18,11 +19,12 @@ RUN set -ex && \
 
 USER ton
 WORKDIR /opt/freeton/
-RUN git clone --depth 1 --recursive https://github.com/tonlabs/main.ton.dev.git
-RUN cd /opt/freeton/main.ton.dev && git fetch origin $TON_SCRIPTS_REV && git checkout -f $TON_SCRIPTS_REV
-WORKDIR /opt/freeton/main.ton.dev/scripts/
+RUN git clone --depth 1 --recursive $TON_BUILD_SCRIPTS_URL ton.dev
+RUN cd /opt/freeton/ton.dev && git fetch origin $TON_BUILD_SCRIPTS_REV && git checkout -f $TON_BUILD_SCRIPTS_REV
+WORKDIR /opt/freeton/ton.dev/scripts/
 RUN ./env.sh && ./build.sh
 
+RUN cd /opt/freeton/ton.dev/ton && git rev-parse HEAD
 
 FROM ubuntu:18.04
 
@@ -41,9 +43,9 @@ RUN set -ex && \
 	mkdir /opt/freeton/ && \
 	chown ton:ton /opt/freeton/
 
-COPY --chown=ton:ton --from=builder /opt/freeton/main.ton.dev /opt/freeton/main.ton.dev
+COPY --chown=ton:ton --from=builder /opt/freeton/ton.dev /opt/freeton/ton.dev
 USER ton
-WORKDIR /opt/freeton/main.ton.dev/scripts/
+WORKDIR /opt/freeton/ton.dev/scripts/
 RUN ./setup.sh
 COPY entry.sh .
 RUN sudo chmod 755 entry.sh

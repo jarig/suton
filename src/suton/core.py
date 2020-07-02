@@ -82,6 +82,10 @@ class TonManage(object):
         if node_settings.DOCKER_HOST:
             cenv['DOCKER_HOST'] = node_settings.DOCKER_HOST
         cenv['TON_WORK_DIR'] = node_settings.TON_WORK_DIR
+
+        cenv['TON_BUILD_SCRIPTS_URL'] = node_settings.TON_BUILD_SCRIPTS_URL
+        cenv['TON_BUILD_SCRIPTS_REV'] = node_settings.TON_BUILD_SCRIPTS_REV
+
         cenv['TON_CONTROL_WORK_DIR'] = node_settings.TON_CONTROL_WORK_DIR
         if node_settings.TON_ENV:
             cenv['TON_ENV'] = node_settings.TON_ENV

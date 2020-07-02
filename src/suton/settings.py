@@ -2,6 +2,10 @@
 class SettingsAbstract(object):
     CONFIGS_DIR = None
 
+    # which scripts to use for building validator node
+    TON_BUILD_SCRIPTS_URL = "https://github.com/tonlabs/main.ton.dev"
+    TON_BUILD_SCRIPTS_REV = "master"
+
     # Intended to be overriden and values set to appropriate values
     # Note: do not commit sensitive data, and instead use Python to derive them in run-time from secure places
     NODE_NAME = None
