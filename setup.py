@@ -19,6 +19,9 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    install_requires=[
+         'paramiko==2.7.1',
+    ],
     include_package_data=True,
     python_requires='>=3.6',
 )
