@@ -41,15 +41,6 @@ if [[ ! -d "$TON_ENV_WORK_DIR" || ! -d "$TON_CLIENT_KEYS_ROOT" ]]; then
   rm -f $TON_ENV_GLOBAL_CONFIG
   rm -f $TON_ENV_LOCAL_CONFIG
   chmod g+r $TON_LOG_ROOT
-  echo "INFO: Copying client keys..."
-  # setup keys for local-controller client (to shared docker volume)
-  sudo cp ${KEYS_DIR}/client $TON_CLIENT_KEYS_ROOT/
-  sudo cp ${KEYS_DIR}/client.pub $TON_CLIENT_KEYS_ROOT/
-  sudo cp ${KEYS_DIR}/server.pub $TON_CLIENT_KEYS_ROOT/
-  sudo cp ${KEYS_DIR}/liteserver.pub $TON_CLIENT_KEYS_ROOT/
-  sudo chmod o+xr $TON_CLIENT_KEYS_ROOT/*.pub
-  echo "INFO: Granting ownership permissions for client private key to $HOST_TON_CONTROL_USER_ID:$HOST_TON_CONTROL_GROUP_ID"
-  sudo chown $HOST_TON_CONTROL_USER_ID:$HOST_TON_CONTROL_GROUP_ID $TON_CLIENT_KEYS_ROOT/client
 fi
 
 if [[ ! -f "$TON_ENV_LOCAL_CONFIG" ]]; then
@@ -74,7 +65,18 @@ if [[ ! -f "$TON_ENV_LOCAL_CONFIG" ]]; then
   echo "INFO: Getting my public IP..."
   MY_ADDR="$(curl https://ipinfo.io/ip)":${ADNL_PORT}
   echo "INFO: MY_ADDR = ${MY_ADDR}"
-
+  
+  # prepare keys
+  echo "INFO: Copying client keys..."
+  # setup keys for local-controller client (to shared docker volume)
+  sudo cp ${KEYS_DIR}/client $TON_CLIENT_KEYS_ROOT/
+  sudo cp ${KEYS_DIR}/client.pub $TON_CLIENT_KEYS_ROOT/
+  sudo cp ${KEYS_DIR}/server.pub $TON_CLIENT_KEYS_ROOT/
+  sudo cp ${KEYS_DIR}/liteserver.pub $TON_CLIENT_KEYS_ROOT/
+  sudo chmod o+xr $TON_CLIENT_KEYS_ROOT/*.pub
+  echo "INFO: Granting ownership permissions for client private key to $HOST_TON_CONTROL_USER_ID:$HOST_TON_CONTROL_GROUP_ID"
+  sudo chown $HOST_TON_CONTROL_USER_ID:$HOST_TON_CONTROL_GROUP_ID $TON_CLIENT_KEYS_ROOT/client
+  
   # generate local configuration
   echo "INFO: Generating local configuration from $config_url"
   "${TON_BUILD_DIR}/validator-engine/validator-engine" -C "${TON_ENV_GLOBAL_CONFIG}" --ip "${MY_ADDR}" --db "${TON_DB_ROOT}" -l "${TON_LOG_ROOT}/validator.log"
