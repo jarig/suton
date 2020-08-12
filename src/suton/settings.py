@@ -26,6 +26,7 @@ class SettingsAbstract(object):
     TON_CONTROL_CLIENT_KEY_PATH = None
     TON_CONTROL_SERVER_PUB_KEY_PATH = None
     TON_CONTROL_LITE_SERVER_PUB_KEY_PATH = None
+    TON_CONTROL_SKIP_ELECTIONS = None
 
     def validate(self):
         if self.TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING is None:

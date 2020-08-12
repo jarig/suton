@@ -119,6 +119,9 @@ class TonManage(object):
         if node_settings.TON_CONTROL_LITE_SERVER_PUB_KEY_PATH:
             cenv['TON_CONTROL_LITE_SERVER_PUB_KEY_PATH'] = node_settings.TON_CONTROL_LITE_SERVER_PUB_KEY_PATH
 
+        if node_settings.TON_CONTROL_SKIP_ELECTIONS:
+            cenv['TON_CONTROL_SKIP_ELECTIONS'] = 'true'
+
         self.pre_execute(node_settings)
 
         if args.parser_name == "docker":

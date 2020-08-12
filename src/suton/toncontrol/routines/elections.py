@@ -46,6 +46,7 @@ class ElectionsRoutine(object):
         self._stake_to_make = stake_to_make
         self._stake_max_factor = stake_max_factor
         self._join_elections = join_elections
+        self._enabled = True
         self._active_elections: list[Election] = []
         self._active_election_file = os.path.join(self._work_dir, "active_elections.json")
         self._check_node_sync_interval_seconds = 2 * 60
@@ -127,7 +128,7 @@ class ElectionsRoutine(object):
                     election_status_telemetry_data['error'] = 'out of sync'
                 else:
                     log.info("Validator is in synced state.")
-                    if self._join_elections:
+                    if self._enabled:
                         log.info("Checking for new elections")
                         validator_addr = self._secret_manager.get_validator_address()
                         validator_account = self._tonos_cli.get_account(validator_addr)
@@ -161,8 +162,9 @@ class ElectionsRoutine(object):
                         if finished_elections:
                             log.info("Finished elections: {}".format(finished_elections))
                             recovered_stake = self._recover_stakes(validator_addr, finished_elections)
-                        if not election_ids:
-                            log.info("No elections happening at a moment.")
+                        if not self._join_elections or not election_ids:
+                            log.info("No elections happening at a moment or join disabled (enabled: {}, ids: {}).".format(self._join_elections,
+                                                                                                                          election_ids))
                         else:
                             log.info("Current active elections: {}".format(election_ids))
                             new_elections = []  # type: List[Election]

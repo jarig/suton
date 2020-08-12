@@ -29,6 +29,8 @@ def main():
                         help="Validator seed phrase or connection string")
     parser.add_argument('--default_election_stake', dest='default_election_stake', default='30%',
                         help='Stake to make on elections, % or absolute value')
+    parser.add_argument('--skip_elections', dest='skip_elections', default=False,
+                        help='Skip elections', action='store_true')
     parser.add_argument('--stake_max_factor', dest='stake_max_factor', default='3',
                         help='Stake max-factor')
     parser.add_argument("--secret_manager_connection_env",
@@ -127,7 +129,8 @@ def main():
                                          secret_manager=secret_manager,
                                          max_sync_diff=args.validator_max_sync_diff,
                                          stake_to_make=args.default_election_stake,
-                                         stake_max_factor=args.stake_max_factor).start()
+                                         stake_max_factor=args.stake_max_factor,
+                                         join_elections=not args.skip_elections).start()
     # Queue
     QueueRoutine(elections_routine=elections_routine,
                  validation_engine_console=validation_engine_console,
