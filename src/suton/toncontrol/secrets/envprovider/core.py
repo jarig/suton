@@ -22,20 +22,29 @@ class EnvSecretProvider(SecretManagerAbstract):
                 # PEM key
                 self._private_key = PrivateKey.load_pkcs1(f.read())
 
+    def _decrypt(self, data: str) -> str:
+        return rsa.decrypt(base64.decodebytes(data.encode()), self._private_key).decode().strip()
+
     def get_validator_address(self):
         return self._data.get("validator_address")
 
+    def get_secret_by_name(self, name: str) -> str:
+        seed = self._data.get("secrets").get(name)
+        if self._private_key:
+            seed = self._decrypt(seed)
+        return seed
+
     def get_validator_seed(self):
         if self._private_key:
-            return rsa.decrypt(base64.decodebytes(self._data.get("validator_seed").encode()), self._private_key).decode().strip()
+            return self._decrypt(self._data.get("validator_seed"))
         return self._data.get("validator_seed").strip()
 
     def get_custodian_seeds(self):
         if self._private_key:
             decr = []
             for seed in self._data.get("custodian_seeds", []):
-                decr.append(rsa.decrypt(base64.decodebytes(seed.encode()), self._private_key).decode().strip())
-                return decr
+                decr.append(self._decrypt(seed))
+            return decr
         return self._data.get("custodian_seeds", [])
 
 

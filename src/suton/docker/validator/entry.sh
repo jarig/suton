@@ -22,6 +22,7 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 TON_ENV_WORK_DIR=$TON_WORK_DIR-$TON_ENV/$TON_ENV
 TON_CLIENT_KEYS_ROOT=/var/ton-client-keys-${TON_ENV}  # shared docker volume
 TON_ENV_GLOBAL_CONFIG=${TON_ENV_WORK_DIR}/etc/ton-global.config.json
+TON_UTILS_ROOT=${TON_ENV_WORK_DIR}/utils
 TON_DB_ROOT=${TON_ENV_WORK_DIR}/db
 TON_LOG_ROOT=${TON_ENV_WORK_DIR}/log
 TON_ENV_LOCAL_CONFIG=${TON_DB_ROOT}/config.json
@@ -33,6 +34,7 @@ if [[ ! -d "$TON_ENV_WORK_DIR" || ! -d "$TON_CLIENT_KEYS_ROOT" ]]; then
   mkdir -p $TON_ENV_WORK_DIR
   mkdir -p $TON_CLIENT_KEYS_ROOT
   mkdir -p $TON_LOG_ROOT
+  mkdir -p $TON_UTILS_ROOT
   echo "INFO: Initializing TON work folder for '$TON_ENV' environment"
   # Copy defaults from container to mount
   cp -R $TON_WORK_DIR/* $TON_ENV_WORK_DIR/
@@ -41,6 +43,8 @@ if [[ ! -d "$TON_ENV_WORK_DIR" || ! -d "$TON_CLIENT_KEYS_ROOT" ]]; then
   rm -f $TON_ENV_GLOBAL_CONFIG
   rm -f $TON_ENV_LOCAL_CONFIG
   chmod g+r $TON_LOG_ROOT
+  # copy utils
+  cp -R ${TON_BUILD_DIR}/utils/* "$TON_UTILS_ROOT/"
 fi
 
 if [[ ! -f "$TON_ENV_LOCAL_CONFIG" ]]; then

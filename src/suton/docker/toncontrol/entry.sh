@@ -69,7 +69,7 @@ add_argument "lite_client_network_address" $TON_CONTROL_VALIDATOR_LITE_CLIENT_AD
 add_argument "client_key" $TON_CONTROL_CLIENT_KEY_PATH
 add_argument "server_pub_key" $TON_CONTROL_SERVER_PUB_KEY_PATH
 add_argument "lite_server_pub_key" $TON_CONTROL_LITE_SERVER_PUB_KEY_PATH
-add_argument "skip_elections" $TON_CONTROL_SKIP_ELECTIONS "y"
+add_argument "election_mode" $TON_CONTROL_ELECTION_MODE
 
 echo "./main.py $args"
 python3 ./main.py $args

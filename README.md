@@ -10,6 +10,7 @@ Status:
 - :heavy_check_mark: TonControl can track for validator health and its sync status
 - :heavy_check_mark: TonControl automates participation in elections
 - :heavy_check_mark: TonControl reports telemetry via LogStash using TCP protocol
+- :heavy_check_mark: TonControl automates participation in DePool elections
 - **=== We are here ===**
 - :clock1: LogStash publishing parsed tonvalidator logs
 - :clock1: Extendable TonControl with own secret-managers
@@ -49,7 +50,8 @@ TonManage().main()
 
 And `node-1/settings.py` with the following:
 ```python
-from suton.core import TonSettings
+
+from settings.core import TonSettings
 import os
 
 class NodeSettings(TonSettings):
@@ -122,7 +124,8 @@ Check [Usage](#usage) first.
 
 Here are possible values for settings
 ```python
-from suton.core import TonSettings
+
+from settings.core import TonSettings
 
 class NodeSettings(TonSettings):
     # define where docker-compose should connect to
@@ -174,6 +177,40 @@ $ echo "<base64_output>" |base64 -d | openssl rsautl -decrypt -inkey key.pem
 ```
 
 Your private key (`key.pem` in the example above) should be placed to `<ton_control_work_dir>/configs/keys` folder and its name saved in `TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING` json of `NodeSettings` class under `encryption_key_name` key of json payload.
+
+## DePool Elections
+
+SuTon can also automate maintenance of DePool contract and elections that are performed via latter.
+
+Here is example config for this:
+
+```python
+
+from settings.core import TonSettings
+class NodeSettings(TonSettings):
+    DOCKER_HOST = "ssh://root@<validator machine IP>"
+
+    TON_ENV = "net.ton.dev"
+    TON_WORK_DIR = "/data/ton-work"
+    TON_CONTROL_WORK_DIR = "/data/ton-control"
+    TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING = {
+        "encryption_key_name": "secret_manager_depool.priv",
+        "validator_seed": '<seed>',
+        "validator_address": "<addr>",
+        "custodian_seeds": [
+            "<seed>"
+        ],
+        "depool_address": "<depool_address>",
+        "proxy_addresses": [
+            "<addr1>",
+            "<addr2>"
+        ]
+    }
+    # instructs Elector routine to participate via DePool
+    TON_CONTROL_ELECTION_MODE = TonSettings.ElectionMode.DEPOOL
+    TONOS_CLI_CONFIG_URL = "https://net.ton.dev"
+    TON_VALIDATOR_CONFIG_URL = "https://raw.githubusercontent.com/tonlabs/net.ton.dev/master/configs/net.ton.dev/ton-global.config.json"
+```
 
 ## LogStash Monitoring
 

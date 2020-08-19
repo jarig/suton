@@ -46,6 +46,8 @@ RUN set -ex && \
 COPY --chown=ton:ton --from=builder /opt/freeton/ton.dev /opt/freeton/ton.dev
 USER ton
 WORKDIR /opt/freeton/ton.dev/scripts/
+# used only in test networks
+ENV NETWORK_TYPE="net.ton.dev"
 RUN ./setup.sh
 COPY entry.sh .
 RUN sudo chmod 755 entry.sh

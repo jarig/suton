@@ -19,7 +19,7 @@ class TonLiteClient(TonExec):
         self._server_addr = server_addr
         self._client_pub_key = client_pub_key
 
-    def _run_command(self, command):
+    def _run_command(self, command, timeout=60):
         """Ex:
         ./lite-client \
         -p "${KEYS_DIR}/liteserver.pub" \
@@ -30,13 +30,13 @@ class TonLiteClient(TonExec):
                 '-p', self._client_pub_key,
                 '-rc', command, '-rc', 'quit', '-v0']
         log.debug("Running: {} {}".format(self._exec_path, args))
-        ret, out = self._execute(args)
+        ret, out = self._execute(args, timeout=timeout)
         if ret != 0:
             raise TonLiteClientException("Failed to run command {}: {}".format(command, out))
         return out
 
     def get_elector_address(self):
-        out = self._run_command("getconfig 1")
+        out = self._run_command("getconfig 1", timeout=10)
         # get address from the output
         pattern = re.compile(r".+elector_addr:x(.+)\)$")
         for line in out.splitlines():
@@ -47,7 +47,7 @@ class TonLiteClient(TonExec):
 
     def get_elector_params(self) -> (ElectionParams, None):
         # ConfigParam(15) = ( validators_elected_for:65536 elections_start_before:32768 elections_end_before:8192 stake_held_for:32768)
-        out = self._run_command("getconfig 15")
+        out = self._run_command("getconfig 15", timeout=10)
         pattern = re.compile(r"ConfigParam\(15\)\s+=\s+\((.+)\)")
         for line in out.splitlines():
             m = pattern.match(line)

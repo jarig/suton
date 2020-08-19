@@ -26,12 +26,17 @@ class TonControlService(DockerService):
         self.host = host
         self.ssh_client = SutonSSHClient(host)
 
+    def _upload_confs(self, source, dest):
+        for conf in os.listdir(source):
+            print("Uploading to configuration folder '{}': {}".format(dest, conf))
+            conf_path = os.path.join(source, conf)
+            remote_dest_path = '{}/{}/{}/{}'.format(self.remote_work_dir, 'configs', dest, conf)
+            self.ssh_client.upload_file_via_ssh(conf_path, remote_dest_path)
+
     def prepare(self):
         logstash_folder = os.path.join(self.configs_dir, 'logstash')
         if os.path.exists(logstash_folder):
-            for conf in os.listdir(logstash_folder):
-                print("Uploading logstash configuration: {}".format(conf))
-                conf_path = os.path.join(logstash_folder, conf)
-                remote_dest_path = '{}/{}/{}/{}'.format(self.remote_work_dir, 'configs', 'logstash', conf)
-                self.ssh_client.upload_file_via_ssh(conf_path, remote_dest_path)
-
+            self._upload_confs(logstash_folder, 'logstash')
+        keys_folder = os.path.join(self.configs_dir, 'keys')
+        if os.path.exists(keys_folder):
+            self._upload_confs(keys_folder, 'keys')
