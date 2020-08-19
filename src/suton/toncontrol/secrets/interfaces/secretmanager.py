@@ -1,3 +1,4 @@
+from typing import List, Optional
 
 
 class SecretManagerAbstract(object):
@@ -10,12 +11,15 @@ class SecretManagerAbstract(object):
         # not really a secret, but more convenient to store nxt to seed
         raise NotImplementedError("Implement this method")
 
+    def get_secret_by_name(self, name: str) -> str:
+        raise NotImplementedError("Implement this method")
+
     def get_validator_seed(self):
         raise NotImplementedError("Implement this method")
 
-    def get_custodian_seeds(self):
+    def get_custodian_seeds(self) -> List[str]:
         """
         Keys of custodians whose confirmations should be automated
         :return:
         """
-        raise NotImplementedError("Implement this method")
+        return []

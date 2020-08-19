@@ -4,13 +4,14 @@ import json
 import os
 import subprocess
 import sys
+
+
+sys.path.append(os.path.join(os.path.dirname(__file__), 'toncontrol'))
+sys.path.append(os.path.join(os.path.dirname(__file__), 'tonlibs'))
+
 from typing import List
 from suton.services import DockerService, TonControlService
-from suton.settings import SettingsAbstract
-
-
-class TonSettings(SettingsAbstract):
-    pass
+from settings.core import TonSettings
 
 
 class TonManage(object):
@@ -87,16 +88,21 @@ class TonManage(object):
         cenv['TON_BUILD_SCRIPTS_REV'] = node_settings.TON_BUILD_SCRIPTS_REV
 
         cenv['TON_CONTROL_WORK_DIR'] = node_settings.TON_CONTROL_WORK_DIR
+        cenv['TON_CONTROL_SETTINGS'] = json.dumps(node_settings.to_json())
+
         if node_settings.TON_ENV:
             cenv['TON_ENV'] = node_settings.TON_ENV
+
         if node_settings.TON_VALIDATOR_CONFIG_URL:
             cenv['TON_VALIDATOR_CONFIG_URL'] = node_settings.TON_VALIDATOR_CONFIG_URL
-        if node_settings.TON_CONTROL_DEFAULT_STAKE:
-            cenv['TON_CONTROL_DEFAULT_STAKE'] = node_settings.TON_CONTROL_DEFAULT_STAKE
-        if node_settings.TON_CONTROL_STAKE_MAX_FACTOR:
-            cenv['TON_CONTROL_STAKE_MAX_FACTOR'] = node_settings.TON_CONTROL_STAKE_MAX_FACTOR
+
+        if node_settings.ELECTIONS_SETTINGS.TON_CONTROL_DEFAULT_STAKE:
+            cenv['TON_CONTROL_DEFAULT_STAKE'] = node_settings.ELECTIONS_SETTINGS.TON_CONTROL_DEFAULT_STAKE
+        if node_settings.ELECTIONS_SETTINGS.TON_CONTROL_STAKE_MAX_FACTOR:
+            cenv['TON_CONTROL_STAKE_MAX_FACTOR'] = node_settings.ELECTIONS_SETTINGS.TON_CONTROL_STAKE_MAX_FACTOR
         if node_settings.TONOS_CLI_CONFIG_URL:
             cenv['TONOS_CLI_CONFIG_URL'] = node_settings.TONOS_CLI_CONFIG_URL
+
         if node_settings.TON_CONTROL_QUEUE_NAME:
             cenv['TON_CONTROL_QUEUE_NAME'] = node_settings.TON_CONTROL_QUEUE_NAME
         elif node_settings.NODE_NAME:
@@ -110,17 +116,9 @@ class TonManage(object):
         if node_settings.TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR:
             cenv['TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR'] = node_settings.TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR
 
-        if node_settings.TON_CONTROL_CLIENT_KEY_PATH:
-            cenv['TON_CONTROL_CLIENT_KEY_PATH'] = node_settings.TON_CONTROL_CLIENT_KEY_PATH
 
-        if node_settings.TON_CONTROL_SERVER_PUB_KEY_PATH:
-            cenv['TON_CONTROL_SERVER_PUB_KEY_PATH'] = node_settings.TON_CONTROL_SERVER_PUB_KEY_PATH
-
-        if node_settings.TON_CONTROL_LITE_SERVER_PUB_KEY_PATH:
-            cenv['TON_CONTROL_LITE_SERVER_PUB_KEY_PATH'] = node_settings.TON_CONTROL_LITE_SERVER_PUB_KEY_PATH
-
-        if node_settings.TON_CONTROL_SKIP_ELECTIONS:
-            cenv['TON_CONTROL_SKIP_ELECTIONS'] = 'true'
+        if node_settings.ELECTIONS_SETTINGS.TON_CONTROL_ELECTION_MODE:
+            cenv['TON_CONTROL_ELECTION_MODE'] = str(node_settings.ELECTIONS_SETTINGS.TON_CONTROL_ELECTION_MODE)
 
         self.pre_execute(node_settings)
 
