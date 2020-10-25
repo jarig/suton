@@ -51,7 +51,7 @@ TonManage().main()
 And `node-1/settings.py` with the following:
 ```python
 
-from settings.core import TonSettings
+from suton.toncontrol.settings.core import TonSettings
 import os
 
 class NodeSettings(TonSettings):
@@ -67,7 +67,7 @@ class NodeSettings(TonSettings):
     # note: it's possible to encrypt data using RSA keys, check Settings docs.
     # don't commit your seed phrases!
     TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING = {
-        "validator_seed": os.environ.get("SOME_ENV_VAR_WITH_SEED"), # can be encrypted
+        "validator_seed": os.environ.get("SOME_ENV_VAR_WITH_SEED"), # can be encrypted, read further
         "validator_address": "-1:<validator address>",
         "custodian_seeds": []
     }
@@ -125,7 +125,17 @@ Check [Usage](#usage) first.
 Here are possible values for settings
 ```python
 
-from settings.core import TonSettings
+from suton.toncontrol.settings.core import TonSettings
+from suton.toncontrol.settings.elections import ElectionSettings
+
+class MyElectionSettings(ElectionSettings):
+
+    # set to DePool Mode
+    # optional: max-factor for the elections. The maximum ratio allowed between your stake and the minimal validator stake in the elected validator group
+    TON_CONTROL_STAKE_MAX_FACTOR = "3"
+    # optional: percent or absolute value(in tokens) of the stake that elector should make
+    TON_CONTROL_DEFAULT_STAKE = "35%"
+
 
 class NodeSettings(TonSettings):
     # define where docker-compose should connect to
@@ -151,10 +161,7 @@ class NodeSettings(TonSettings):
         # also should be in encrypted form if 'encryption_key_name' is present.
         "custodian_seeds": []
     }
-    # optional: percent or absolute value(in tokens) of the stake that elector should make
-    TON_CONTROL_DEFAULT_STAKE = "35%"
-    # optional: max-factor for the elections. The maximum ratio allowed between your stake and the minimal validator stake in the elected validator group
-    TON_CONTROL_STAKE_MAX_FACTOR = None
+    ELECTIONS_SETTINGS = MyElectionSettings()
     # optional: url to configuration that tonos-cli should use (default is derived from TON_ENV, i.e https://$TON_ENV)
     TONOS_CLI_CONFIG_URL = None
     # optional: Setting is optional and if omitted, then will derive config based on TEST_ENV param and 
@@ -186,7 +193,29 @@ Here is example config for this:
 
 ```python
 
-from settings.core import TonSettings
+from suton.toncontrol.settings.core import TonSettings
+from suton.toncontrol.settings.elections import ElectionSettings, ElectionMode
+from suton.toncontrol.settings.models.depool import DePoolSettings
+
+#  
+_DEPOOL_HELPER_SEED_NAME = "depool_helper"
+
+class DepoolElectionSettings(ElectionSettings):
+
+    # set to DePool Mode
+    TON_CONTROL_ELECTION_MODE = ElectionMode.DEPOOL
+    DEPOOL_LIST = [
+        DePoolSettings(depool_address="<depool_address_in_workchain>",
+                       proxy_addresses=["<first_proxy_in_masterchain>",
+                                        "<second_proxy_in_masterchain>"],
+                       helper_address="<helper_address_in_workchain>",
+                       # name of a secret within 'secrets' section of the connection string payload (if ENV SecretManager used)
+                       helper_seed_name=_DEPOOL_HELPER_SEED_NAME,
+                       # helper ABI file
+                       helper_abi_url="https://raw.githubusercontent.com/tonlabs/ton-labs-contracts/master/solidity/depool/DePoolHelper.abi.json")
+    ]
+
+
 class NodeSettings(TonSettings):
     DOCKER_HOST = "ssh://root@<validator machine IP>"
 
@@ -194,22 +223,20 @@ class NodeSettings(TonSettings):
     TON_WORK_DIR = "/data/ton-work"
     TON_CONTROL_WORK_DIR = "/data/ton-control"
     TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING = {
-        "encryption_key_name": "secret_manager_depool.priv",
+        "encryption_key_name": "<encryption_key_name>",
         "validator_seed": '<seed>',
         "validator_address": "<addr>",
         "custodian_seeds": [
             "<seed>"
         ],
-        "depool_address": "<depool_address>",
-        "proxy_addresses": [
-            "<addr1>",
-            "<addr2>"
-        ]
+        "secrets": {
+            _DEPOOL_HELPER_SEED_NAME: "<seed>"
+        }
     }
-    # instructs Elector routine to participate via DePool
-    TON_CONTROL_ELECTION_MODE = TonSettings.ElectionMode.DEPOOL
-    TONOS_CLI_CONFIG_URL = "https://net.ton.dev"
     TON_VALIDATOR_CONFIG_URL = "https://raw.githubusercontent.com/tonlabs/net.ton.dev/master/configs/net.ton.dev/ton-global.config.json"
+    TONOS_CLI_CONFIG_URL = "https://net.ton.dev"
+    # Specify election settings, in current case it's depool ones
+    ELECTIONS_SETTINGS = DepoolElectionSettings()
 ```
 
 ## LogStash Monitoring
