@@ -6,9 +6,12 @@ import threading
 import time
 from typing import List, Optional
 
+from exceptions.depool import LowDePoolBalanceException
 from routines.models.elections import Election
 from secrets.interfaces.secretmanager import SecretManagerAbstract
 from settings.elections import ElectionSettings, ElectionMode
+from toncommon.models.DePoolElectionEvent import DePoolElectionEvent
+from toncommon.models.DePoolLowBalanceEvent import DePoolLowBalanceEvent
 from toncommon.models.TonAddress import TonAddress
 from toncommon.models.TonCoin import TonCoin
 from tonfift.core import FiftCli
@@ -368,12 +371,14 @@ class ElectionsRoutine(object):
                                         proxy_addresses = depool_data.proxy_addresses
                                         depool_addr = depool_data.depool_address
                                         log.info("Proxy addresses: {}, for: {}".format(proxy_addresses, depool_addr))
-                                        relevant_events = self._tonos_cli.get_depool_signing_events(depool_addr,
-                                                                                                    proxy_addresses=proxy_addresses,
-                                                                                                    election_ids=election_ids)
-                                        if relevant_events:
-                                            log.debug("Found signing events: {}".format(relevant_events))
-                                            for event in relevant_events:
+                                        depool_events = self._tonos_cli.get_depool_events(depool_addr,
+                                                                                          proxy_addresses=proxy_addresses,
+                                                                                          election_ids=election_ids)
+                                        election_events = [event for event in depool_events if
+                                                           isinstance(event, DePoolElectionEvent)]
+                                        if election_events:
+                                            log.debug("Found election events: {}".format(election_events))
+                                            for event in election_events:
                                                 log.info("Checking proxy: {}".format(event.proxy))
                                                 filtered_election = next((election for election in new_elections
                                                                           if str(election.election_id) == str(event.election_id)),
@@ -401,6 +406,11 @@ class ElectionsRoutine(object):
                                                                                  depool_data.helper_seed_name))
                                                 depool_data.set_last_ticktock(time.time())
                                                 log.info("Ticktock sent at {}".format(depool_data.get_last_ticktock()))
+
+                                        # raise error if events signaling that DePool is malfunctioning
+                                        if depool_events and isinstance(depool_events[0], DePoolLowBalanceEvent):
+                                            raise LowDePoolBalanceException("DePool Balance is low to operate",
+                                                                            balance=depool_events[0].balance)
                                 else:
                                     log.info("Skipping validations due to set election mode: {}".format(self._election_mode))
                         self.save_active_elections()
