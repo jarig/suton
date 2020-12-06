@@ -2,12 +2,13 @@ import hashlib
 import json
 import logging
 import os
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pip._vendor import requests
 from toncommon.contextmanager import secret_manager
 from toncommon.core import TonExec
 from toncommon.models.DePoolElectionEvent import DePoolElectionEvent
+from toncommon.models.DePoolLowBalanceEvent import DePoolLowBalanceEvent
 from toncommon.models.TonAccount import TonAccount
 from toncommon.models.TonTransaction import TonTransaction
 
@@ -85,20 +86,28 @@ class TonosCli(TonExec):
         return TonAccount(acc_type=data["acc_type"], balance=int(data.get("balance", 0)),
                           last_paid=int(data.get("last_paid")), data=data.get("data(boc)"))
 
-    def get_depool_signing_events(self, depool_addr,
-                                  proxy_addresses: List[str] = None,
-                                  election_ids: List[str] = None) -> List[DePoolElectionEvent]:
+    def get_depool_events(self, depool_addr,
+                          proxy_addresses: List[str] = None,
+                          election_ids: List[str] = None,
+                          max: int = 100) -> List[Union[DePoolElectionEvent, DePoolLowBalanceEvent]]:
         log.debug("Depool events for proxies: {}".format(proxy_addresses))
         out = self._run_command("depool", ["--addr", depool_addr, "events"])
         log.debug("Tonoscli: {}".format(out))
         events = []
         for line in out.splitlines():
+            if line.startswith("{\"replenishment"):
+                data = json.loads(line)
+                low_balance_event = DePoolLowBalanceEvent(balance=data["replenishment"])
+                events.append(low_balance_event)
             if "electionId" in line and line.startswith("{"):
                 data = json.loads(line)
                 depool_event = DePoolElectionEvent(election_id=data["electionId"], proxy=data["proxy"])
                 if not proxy_addresses or depool_event.proxy in proxy_addresses:
                     if not election_ids or depool_event.election_id in election_ids:
                         events.append(depool_event)
+            if len(events) >= max:
+                break
+
         return events
 
     def call_command(self, address: str, command: str, payload: dict,

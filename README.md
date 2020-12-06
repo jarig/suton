@@ -192,7 +192,6 @@ SuTon can also automate maintenance of DePool contract and elections that are pe
 Here is example config for this:
 
 ```python
-
 from suton.toncontrol.settings.core import TonSettings
 from suton.toncontrol.settings.elections import ElectionSettings, ElectionMode
 from suton.toncontrol.settings.models.depool import DePoolSettings
@@ -200,7 +199,7 @@ from suton.toncontrol.settings.models.depool import DePoolSettings
 #  
 _DEPOOL_HELPER_SEED_NAME = "depool_helper"
 
-class DepoolElectionSettings(ElectionSettings):
+class MyDepoolElectionSettings(ElectionSettings):
 
     # set to DePool Mode
     TON_CONTROL_ELECTION_MODE = ElectionMode.DEPOOL
@@ -236,7 +235,7 @@ class NodeSettings(TonSettings):
     TON_VALIDATOR_CONFIG_URL = "https://raw.githubusercontent.com/tonlabs/net.ton.dev/master/configs/net.ton.dev/ton-global.config.json"
     TONOS_CLI_CONFIG_URL = "https://net.ton.dev"
     # Specify election settings, in current case it's depool ones
-    ELECTIONS_SETTINGS = DepoolElectionSettings()
+    ELECTIONS_SETTINGS = MyDepoolElectionSettings()
 ```
 
 ## LogStash Monitoring
