@@ -1,10 +1,12 @@
+import json
 import logging
 import re
+from typing import List, Dict
 
 from toncommon.core import TonExec
 from toncommon.models.TonAddress import TonAddress
 from tonliteclient.exceptions.base import TonLiteClientException
-from tonliteclient.models.ElectionParams import ElectionParams, StakeParams
+from tonliteclient.models.ElectionParams import ElectionParams, StakeParams, ElectionValidatorParams
 
 log = logging.getLogger("tonclient")
 
@@ -35,6 +37,15 @@ class TonLiteClient(TonExec):
             raise TonLiteClientException("Failed to run command {}: {}".format(command, out))
         return out
 
+    def _parse_config_tokens(self, data: str) -> Dict[str, str]:
+        tokens = re.split(r"\t|\s", data)
+        data = {}
+        for token in tokens:
+            if token.strip():
+                name_val = token.split(":")
+                data[name_val[0].strip()] = name_val[1].strip()
+        return data
+
     def get_elector_address(self):
         out = self._run_command("getconfig 1", timeout=10)
         # get address from the output
@@ -45,6 +56,20 @@ class TonLiteClient(TonExec):
                 return TonAddress.set_address_prefix(m.group(1).strip(), TonAddress.Type.MASTER_CHAIN)
         return None
 
+    def get_election_validator_params(self) -> (ElectionValidatorParams, None):
+        # ConfigParam(16) = ( max_validators:1000 max_main_validators:100 min_validators:13)
+        out = self._run_command("getconfig 16", timeout=10)
+        pattern = re.compile(r"ConfigParam\(16\)\s+=\s+\((.+)\)")
+        for line in out.splitlines():
+            m = pattern.match(line)
+            if m:
+                data = self._parse_config_tokens(m.group(1))
+                params = ElectionValidatorParams(max_validators=int(data.get("max_validators", 0)),
+                                                 max_main_validators=int(data.get("max_main_validators", 0)),
+                                                 min_validators=int(data.get("min_validators", 0)))
+                return params
+        return None
+
     def get_elector_params(self) -> (ElectionParams, None):
         # ConfigParam(15) = ( validators_elected_for:65536 elections_start_before:32768 elections_end_before:8192 stake_held_for:32768)
         out = self._run_command("getconfig 15", timeout=10)
@@ -52,12 +77,7 @@ class TonLiteClient(TonExec):
         for line in out.splitlines():
             m = pattern.match(line)
             if m:
-                tokens = re.split(r"\t|\s", m.group(1))
-                data = {}
-                for token in tokens:
-                    if token.strip():
-                        name_val = token.split(":")
-                        data[name_val[0].strip()] = name_val[1].strip()
+                data = self._parse_config_tokens(m.group(1))
                 params = ElectionParams(validators_elected_for=int(data.get("validators_elected_for", 0)),
                                         elections_start_before=int(data.get("elections_start_before", 0)),
                                         elections_end_before=int(data.get("elections_end_before", 0)),
@@ -92,6 +112,17 @@ class TonLiteClient(TonExec):
             if m:
                 ids = m.group(1).strip().split(",")
                 return [eid.strip() for eid in ids if eid.strip() != "0"]
+        return []
+
+    def get_current_participant_stakes(self, elector_addr: str) -> List[int]:
+        elector_addr = TonAddress.set_address_prefix(elector_addr, TonAddress.Type.MASTER_CHAIN)
+        out = self._run_command("runmethodfull {} participant_list".format(elector_addr))
+        pattern = re.compile(r"result:\s+\[\s*\((.+)\)\s*\]")
+        for line in out.splitlines():
+            m = pattern.match(line)
+            if m:
+                participant_info = json.loads(f"[{m.group(1).replace(' ', ',')}]")
+                return [p_info[1] for p_info in participant_info]
         return []
 
     def compute_returned_stakes(self, elector_addr, validator_addr) -> [str]:

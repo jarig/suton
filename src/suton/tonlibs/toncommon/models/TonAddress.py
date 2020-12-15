@@ -11,7 +11,9 @@ class TonAddress(object):
 
     @staticmethod
     def get_short_address(adr: str):
-        return '{}..{}'.format(adr[:6], adr[-3:])
+        if adr:
+            return '{}..{}'.format(adr[:6], adr[-3:])
+        return '[missing adr]'
 
     @staticmethod
     def set_address_prefix(adr: str, prefix):

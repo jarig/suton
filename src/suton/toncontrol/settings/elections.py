@@ -3,6 +3,7 @@ from typing import List
 
 from settings.base import BaseTonControlSettings
 from settings.models.depool import DePoolSettings
+from settings.models.prudent_elections import PrudentElectionSettings
 
 
 class ElectionMode(Enum):
@@ -19,6 +20,7 @@ class ElectionSettings(BaseTonControlSettings):
     TON_CONTROL_DEFAULT_STAKE = '30%'  # % or absolute value, ex 30%
     TON_CONTROL_STAKE_MAX_FACTOR = '3'
     TON_CONTROL_ELECTION_MODE = ElectionMode.VALIDATOR
+    PRUDENT_ELECTION_SETTINGS: PrudentElectionSettings = None
     DEPOOL_LIST: List[DePoolSettings] = []
 
     @classmethod

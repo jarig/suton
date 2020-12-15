@@ -7,8 +7,9 @@ from typing import List, Optional, Union
 from pip._vendor import requests
 from toncommon.contextmanager import secret_manager
 from toncommon.core import TonExec
-from toncommon.models.DePoolElectionEvent import DePoolElectionEvent
-from toncommon.models.DePoolLowBalanceEvent import DePoolLowBalanceEvent
+from toncommon.models.depool.DePoolElectionEvent import DePoolElectionEvent
+from toncommon.models.depool.DePoolEvent import DePoolEvent
+from toncommon.models.depool.DePoolLowBalanceEvent import DePoolLowBalanceEvent
 from toncommon.models.TonAccount import TonAccount
 from toncommon.models.TonTransaction import TonTransaction
 
@@ -86,30 +87,6 @@ class TonosCli(TonExec):
         return TonAccount(acc_type=data["acc_type"], balance=int(data.get("balance", 0)),
                           last_paid=int(data.get("last_paid")), data=data.get("data(boc)"))
 
-    def get_depool_events(self, depool_addr,
-                          proxy_addresses: List[str] = None,
-                          election_ids: List[str] = None,
-                          max: int = 100) -> List[Union[DePoolElectionEvent, DePoolLowBalanceEvent]]:
-        log.debug("Depool events for proxies: {}".format(proxy_addresses))
-        out = self._run_command("depool", ["--addr", depool_addr, "events"])
-        log.debug("Tonoscli: {}".format(out))
-        events = []
-        for line in out.splitlines():
-            if line.startswith("{\"replenishment"):
-                data = json.loads(line)
-                low_balance_event = DePoolLowBalanceEvent(balance=data["replenishment"])
-                events.append(low_balance_event)
-            if "electionId" in line and line.startswith("{"):
-                data = json.loads(line)
-                depool_event = DePoolElectionEvent(election_id=data["electionId"], proxy=data["proxy"])
-                if not proxy_addresses or depool_event.proxy in proxy_addresses:
-                    if not election_ids or depool_event.election_id in election_ids:
-                        events.append(depool_event)
-            if len(events) >= max:
-                break
-
-        return events
-
     def call_command(self, address: str, command: str, payload: dict,
                      abi_url: str, private_key: str = None) -> Optional[dict]:
         cmd = [address, command, str(json.dumps(payload)), "--abi", self._materialize_abi(abi_url)]
@@ -147,10 +124,56 @@ class TonosCli(TonExec):
                 log.debug("Tonoscli: {}".format(out))
         return TonTransaction(tid=transaction_id)
 
+    def get_depool_events(self, depool_addr,
+                          max: int = 100) -> List[DePoolEvent]:
+        out = self._run_command("depool", ["--addr", depool_addr, "events"])
+        log.debug("Tonoscli: {}".format(out))
+        events = []
+        current_event_id = None
+        current_event = None
+        for line in out.splitlines():
+            if not line or not line.strip():
+                # empty line indicates that next event is coming
+                current_event_id = None
+                current_event = None
+                continue
+            if line.startswith("event "):
+                current_event_id = line.split(" ")[1]
+                continue
+
+            if current_event_id and not current_event:
+                # new event started, but we don't know yet which one
+                event_name = line.split(" ")[0]
+                event_cls = DePoolEvent
+                if event_name == "TooLowDePoolBalance":
+                    event_cls = DePoolLowBalanceEvent
+                elif event_name == "StakeSigningRequested":
+                    event_cls = DePoolElectionEvent
+                current_event = event_cls(current_event_id, event_name)
+                continue
+
+            if current_event and line.startswith("{"):
+                current_event.set_data(line)
+                events.append(current_event)
+
+            if len(events) >= max:
+                break
+
+        return events
+
     def terminate_depool(self, address, private_key: str):
         with secret_manager(secrets=[private_key]):
             transaction_payload = json.dumps({})
             out = self._run_command('call', [address, "terminator", transaction_payload,
                                     "--abi", self._abi_path, "--sign", str(private_key)])
             log.debug("Tonoscli: {}".format(out))
+
+    def depool_ticktock(self, depool_address: str, wallet_address: str, private_key: str,
+                        custodian_keys: List[str]):
+        with secret_manager(secrets=[private_key]):
+            out = self._run_command("depool", ["--addr", depool_address, "ticktock",
+                                               "-w", wallet_address, "--sign", str(private_key)])
+            log.debug("Tonoscli: {}".format(out))
+            data = self._parse_result(out)
+            self.confirm_transaction(wallet_address, transaction_id=data.get("transId"), private_keys=custodian_keys)
 

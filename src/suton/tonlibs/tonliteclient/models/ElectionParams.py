@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 
 
 class ElectionParams(object):
@@ -14,4 +15,11 @@ class StakeParams(object):
     def __init__(self, min_stake, max_stake):
         self.min_stake = min_stake
         self.max_stake = max_stake
+
+
+@dataclass
+class ElectionValidatorParams(object):
+    max_validators: int
+    max_main_validators: int
+    min_validators: int
 
