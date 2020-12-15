@@ -3,12 +3,12 @@
 
 if [[ ! -z "$TON_CONTROL_QUEUE_PROVIDER_PIP_PACKAGE" ]]
 then
-  pip3 install $TON_CONTROL_QUEUE_PROVIDER_PIP_PACKAGE
+  python3.7 -m pip install $TON_CONTROL_QUEUE_PROVIDER_PIP_PACKAGE
 fi
 
 if [[ ! -z "$TON_CONTROL_SECRET_MANAGER_PROVIDER_PIP_PACKAGE" ]]
 then
-  pip3 install $TON_CONTROL_SECRET_MANAGER_PROVIDER_PIP_PACKAGE
+  python3.7 -m pip install $TON_CONTROL_SECRET_MANAGER_PROVIDER_PIP_PACKAGE
 fi
 
 work_base_dir="/var/ton-control"
@@ -72,6 +72,6 @@ add_argument "lite_server_pub_key" $TON_CONTROL_LITE_SERVER_PUB_KEY_PATH
 add_argument "election_mode" $TON_CONTROL_ELECTION_MODE
 
 echo "./main.py $args"
-python3 ./main.py $args
+python3.7 ./main.py $args
 
 

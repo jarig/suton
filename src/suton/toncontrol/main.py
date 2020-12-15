@@ -6,6 +6,8 @@ import sys
 import os
 from logging.handlers import RotatingFileHandler
 # TODO: remove once tonlibs are moved away
+from settings.models.prudent_elections import PrudentElectionSettings
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'tonlibs'))
 
 
@@ -106,7 +108,8 @@ def main():
                                                               WalletManagementSettings.ActionSpec,
                                                               WalletManagementSettings.Wallet,
                                                               WalletManagementSettings.WalletBalanceCheckAction,
-                                                              DePoolSettings])
+                                                              DePoolSettings,
+                                                              PrudentElectionSettings])
         log.debug("Settings in use: \n {}".format(ton_control_settings))
     if args.work_dir:
         ton_control_settings.TON_WORK_DIR = args.work_dir

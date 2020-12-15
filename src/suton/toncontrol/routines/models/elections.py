@@ -1,7 +1,6 @@
 import datetime
 import time
-from typing import Optional
-
+from typing import Optional, List
 from settings.elections import ElectionMode
 from toncommon.models.TonAddress import TonAddress
 from tonliteclient.models.ElectionParams import ElectionParams
@@ -30,6 +29,17 @@ class Election(object):
     def can_return(self):
         current_state = self.get_state()
         return current_state is None or current_state == Election.State.REWARD
+
+    def get_election_finishes_in(self) -> float:
+        current_state = self.get_state()
+        if current_state == Election.State.ELECTIONS:
+            return self.get_election_end_time() - time.time()
+        return 0
+
+    def get_election_start_time(self) -> int:
+        if self.election_params:
+            return int(self.election_id) - self.election_params.elections_start_before
+        return 0
 
     def get_election_end_time(self) -> int:
         if self.election_params:
@@ -105,10 +115,11 @@ class Election(object):
         return data
 
     def __str__(self):
-        return "[{}] [{}] [{}] [{}] [{}]".format(self.election_id, self.get_state(),
-                                                 TonAddress.get_short_address(self.elector_addr),
-                                                 self.get_reward_time(),
-                                                 self.election_mode)
+        return "[{}] [{}] [{}] [{}] [{}] [Finishes in {}]".format(self.election_id, self.get_state(),
+                                                                  TonAddress.get_short_address(self.elector_addr),
+                                                                  self.get_reward_time(),
+                                                                  self.election_mode,
+                                                                  datetime.timedelta(seconds=self.get_election_finishes_in()))
 
     def __repr__(self):
         return str(self)

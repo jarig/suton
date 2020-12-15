@@ -67,7 +67,7 @@ class NodeSettings(TonSettings):
     # note: it's possible to encrypt data using RSA keys, check Settings docs.
     # don't commit your seed phrases!
     TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING = {
-        "validator_seed": os.environ.get("SOME_ENV_VAR_WITH_SEED"), # can be encrypted, read further
+        "validator_seed": os.environ.get(f"SOME_ENV_VAR_WITH_SEED"), # can be encrypted, read further
         "validator_address": "-1:<validator address>",
         "custodian_seeds": []
     }
@@ -130,7 +130,6 @@ from suton.toncontrol.settings.elections import ElectionSettings
 
 class MyElectionSettings(ElectionSettings):
 
-    # set to DePool Mode
     # optional: max-factor for the elections. The maximum ratio allowed between your stake and the minimal validator stake in the elected validator group
     TON_CONTROL_STAKE_MAX_FACTOR = "3"
     # optional: percent or absolute value(in tokens) of the stake that elector should make
@@ -185,7 +184,43 @@ $ echo "<base64_output>" |base64 -d | openssl rsautl -decrypt -inkey key.pem
 
 Your private key (`key.pem` in the example above) should be placed to `<ton_control_work_dir>/configs/keys` folder and its name saved in `TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING` json of `NodeSettings` class under `encryption_key_name` key of json payload.
 
-## DePool Elections
+## Elections
+
+### Direct
+
+```python
+from suton.toncontrol.settings.core import TonSettings
+from suton.toncontrol.settings.elections import ElectionSettings
+
+class MyElectionSettings(ElectionSettings):
+    # optional: max-factor for the elections. The maximum ratio allowed between your stake and the minimal validator stake in the elected validator group
+    TON_CONTROL_STAKE_MAX_FACTOR = "3"
+    # optional: percent or absolute value(in tokens) of the stake that elector should make
+    TON_CONTROL_DEFAULT_STAKE = "35%"
+
+class NodeSettings(TonSettings):
+    DOCKER_HOST = "ssh://root@<validator machine IP>"
+
+    TON_ENV = "net.ton.dev"
+    TON_WORK_DIR = "/data/ton-work"
+    TON_CONTROL_WORK_DIR = "/data/ton-control"
+    TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING = {
+        "encryption_key_name": "<encryption_key_name>",
+        "validator_seed": '<seed>',
+        "validator_address": "<addr>",
+        "custodian_seeds": [
+            "<seed>"
+        ],
+        "secrets": {
+        }
+    }
+    TON_VALIDATOR_CONFIG_URL = "https://raw.githubusercontent.com/tonlabs/net.ton.dev/master/configs/net.ton.dev/ton-global.config.json"
+    TONOS_CLI_CONFIG_URL = "https://net.ton.dev"
+    # Specify election settings, in current case it's depool ones
+    ELECTIONS_SETTINGS = MyElectionSettings()
+```
+
+### DePool
 
 SuTon can also automate maintenance of DePool contract and elections that are performed via latter.
 
@@ -196,22 +231,16 @@ from suton.toncontrol.settings.core import TonSettings
 from suton.toncontrol.settings.elections import ElectionSettings, ElectionMode
 from suton.toncontrol.settings.models.depool import DePoolSettings
 
-#  
-_DEPOOL_HELPER_SEED_NAME = "depool_helper"
+# NOTE: TickTock events are send via Validator wallet to DePool directly
 
 class MyDepoolElectionSettings(ElectionSettings):
 
     # set to DePool Mode
     TON_CONTROL_ELECTION_MODE = ElectionMode.DEPOOL
     DEPOOL_LIST = [
-        DePoolSettings(depool_address="<depool_address_in_workchain>",
-                       proxy_addresses=["<first_proxy_in_masterchain>",
-                                        "<second_proxy_in_masterchain>"],
-                       helper_address="<helper_address_in_workchain>",
-                       # name of a secret within 'secrets' section of the connection string payload (if ENV SecretManager used)
-                       helper_seed_name=_DEPOOL_HELPER_SEED_NAME,
-                       # helper ABI file
-                       helper_abi_url="https://raw.githubusercontent.com/tonlabs/ton-labs-contracts/master/solidity/depool/DePoolHelper.abi.json")
+        DePoolSettings(depool_address=f"<depool_address_in_workchain>",
+                       proxy_addresses=[f"<first_proxy_in_masterchain>",
+                                        f"<second_proxy_in_masterchain>"])
     ]
 
 
@@ -229,7 +258,6 @@ class NodeSettings(TonSettings):
             "<seed>"
         ],
         "secrets": {
-            _DEPOOL_HELPER_SEED_NAME: "<seed>"
         }
     }
     TON_VALIDATOR_CONFIG_URL = "https://raw.githubusercontent.com/tonlabs/net.ton.dev/master/configs/net.ton.dev/ton-global.config.json"
@@ -237,6 +265,43 @@ class NodeSettings(TonSettings):
     # Specify election settings, in current case it's depool ones
     ELECTIONS_SETTINGS = MyDepoolElectionSettings()
 ```
+
+### Prudent Election Settings
+
+Participation in election is alike with a game, sometimes you can win or loose, depending on your competitors and situation 
+on among current participants. 
+If a stake you make is too low and you are not getting into minimal number of validators 
+(so TOP N validators made higher stake than you, where N is max allowed number of validators), then you are kicked out and TONs you payed for election requests are gone.
+So, it's important to play this game right and to make it easier SuTON provides extra settings - `PrudentSettings` that will help you to win this game.
+
+Example with the DePool mode:
+```python
+from suton.toncontrol.settings.models.prudent_elections import PrudentElectionSettings
+from suton.toncontrol.settings.elections import ElectionSettings, ElectionMode
+from suton.toncontrol.settings.models.depool import DePoolSettings
+
+class DepoolElectionSettings(ElectionSettings):
+
+    TON_CONTROL_ELECTION_MODE = ElectionMode.DEPOOL
+    DEPOOL_LIST = [
+        DePoolSettings(depool_address=f"<depool_address_in_workchain>",
+                       proxy_addresses=[f"...", f"..."],
+                       prudent_election_settings=PrudentElectionSettings(election_end_join_offset=3600,
+                                                                 join_threshold=1))
+    ]
+```  
+You can define `PrudentElectionSettings` either to DePoolSettings (if you are using DePools) or in `ElectionSettings.PRUDENT_ELECTION_SETTINGS` if participating directly.
+
+Where
+
+`election_end_join_offset` - Defines time offset when to join elections before election end.
+So for example, if you define 600 - then stake will be made in 10 or less minutes before election ends. Defined in seconds.
+
+`join_threshold` - Percentage that defines election join condition, based on the current number of stakes
+their min_value and stake you can/want to make. Threshold = `participants_with_lower_than_your_stake / first_N_participants`.
+So for example, if you define 10, then elections will be taken if 10% of valid participants (who potentially can join) 
+has lower stake than yours at a moment in time when election join attempt is made (which regulated by `election_end_join_offset` param).
+
 
 ## LogStash Monitoring
 

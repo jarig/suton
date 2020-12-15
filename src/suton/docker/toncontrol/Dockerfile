@@ -11,6 +11,8 @@ RUN apt-get update && \
     && useradd --uid "$HOST_TON_CONTROL_GROUP_ID" --gid "$HOST_TON_CONTROL_GROUP_ID" --create-home --shell /bin/bash toncontrol && \
     echo "toncontrol ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
+RUN python3.7 -m pip install --upgrade pip
+
 COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/build/lite-client /opt/ton/lite-client
 COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/build/validator-engine-console /opt/ton/validator-engine-console
 COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/build/utils /opt/ton/utils
@@ -31,7 +33,7 @@ RUN chown toncontrol:toncontrol /opt/toncontrol/
 
 USER toncontrol
 WORKDIR /opt/toncontrol
-RUN pip3 install -r requirements.txt
+RUN python3.7 -m pip install -r requirements.txt
 
 COPY ./docker/toncontrol/entry.sh .
 RUN sudo chmod 755 entry.sh
