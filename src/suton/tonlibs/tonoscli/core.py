@@ -7,6 +7,7 @@ from typing import List, Optional, Union
 from pip._vendor import requests
 from toncommon.contextmanager import secret_manager
 from toncommon.core import TonExec
+from toncommon.models.TonCoin import TonCoin
 from toncommon.models.depool.DePoolElectionEvent import DePoolElectionEvent
 from toncommon.models.depool.DePoolEvent import DePoolEvent
 from toncommon.models.depool.DePoolLowBalanceEvent import DePoolLowBalanceEvent
@@ -113,9 +114,9 @@ class TonosCli(TonExec):
                                     "--abi", self._abi_path, "--sign", str(private_key)])
             data = self._parse_result(out)
             log.debug("Tonoscli: {}".format(out))
-            return TonTransaction(tid=data.get("transId"))
+        return TonTransaction(tid=data.get("transId"))
 
-    def confirm_transaction(self, address, transaction_id, private_keys: List[str]) -> TonTransaction:
+    def confirm_transaction(self, address: str, transaction_id: str, private_keys: List[str]) -> TonTransaction:
         with secret_manager(secrets=private_keys):
             for key in private_keys:
                 transaction_payload = json.dumps({"transactionId": transaction_id})
@@ -123,6 +124,17 @@ class TonosCli(TonExec):
                                         "--abi", self._abi_path, "--sign", key])
                 log.debug("Tonoscli: {}".format(out))
         return TonTransaction(tid=transaction_id)
+
+    def depool_replenish(self, depool_addr: str, wallet_addr: str, value: TonCoin,
+                         private_key: str, custodian_keys: List[str] = None) -> TonTransaction:
+        with secret_manager(secrets=[private_key]):
+            out = self._run_command('depool', ["--addr", depool_addr, "replenish", "--value", value.as_tokens(),
+                                    "--wallet", wallet_addr, "--sign", str(private_key)])
+            log.debug("Tonoscli: {}".format(out))
+            data = self._parse_result(out)
+            if data and custodian_keys:
+                self.confirm_transaction(wallet_addr, transaction_id=data.get("transId"), private_keys=custodian_keys)
+        return TonTransaction(tid=data.get("transId"))
 
     def get_depool_events(self, depool_addr,
                           max: int = 100) -> List[DePoolEvent]:
@@ -169,11 +181,12 @@ class TonosCli(TonExec):
             log.debug("Tonoscli: {}".format(out))
 
     def depool_ticktock(self, depool_address: str, wallet_address: str, private_key: str,
-                        custodian_keys: List[str]):
+                        custodian_keys: List[str] = None):
         with secret_manager(secrets=[private_key]):
             out = self._run_command("depool", ["--addr", depool_address, "ticktock",
                                                "-w", wallet_address, "--sign", str(private_key)])
             log.debug("Tonoscli: {}".format(out))
             data = self._parse_result(out)
-            self.confirm_transaction(wallet_address, transaction_id=data.get("transId"), private_keys=custodian_keys)
+            if custodian_keys:
+                self.confirm_transaction(wallet_address, transaction_id=data.get("transId"), private_keys=custodian_keys)
 

@@ -4,13 +4,13 @@ import logging
 import os
 import threading
 import time
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from exceptions.depool import LowDePoolBalanceException
 from routines.models.elections import Election
 from secrets.interfaces.secretmanager import SecretManagerAbstract
 from settings.elections import ElectionSettings, ElectionMode
-from settings.models.prudent_elections import PrudentElectionSettings
+from settings.depool_settings.prudent_elections import PrudentElectionSettings
 from toncommon.models.depool.DePoolElectionEvent import DePoolElectionEvent
 from toncommon.models.depool.DePoolLowBalanceEvent import DePoolLowBalanceEvent
 from toncommon.models.TonAddress import TonAddress
@@ -265,19 +265,24 @@ class ElectionsRoutine(object):
         return election
 
     def _satisfies_prudent_settings(self, election: Election, prudent_settings: PrudentElectionSettings,
-                                    election_stake: int, stakes: List[int], telemetry_holder: dict) -> bool:
+                                    election_stake: int, max_validators: int,
+                                    stakes: List[int], telemetry_holder: dict) -> bool:
         log.info(f"Checking prudent elections settings: {prudent_settings}")
         offset = prudent_settings.election_end_join_offset
         e_finish_in = election.get_election_finishes_in()
+        lower_than_mine = [s for s in stakes if s < election_stake]
+        # 100 - our's is the highest, 0 - is the lowest
+        join_threshold = (len(lower_than_mine) / len(stakes)) * 100
+        telemetry_holder["join_threshold"] = join_threshold
+        log.debug(f"Threshold {join_threshold}, stake {election_stake}, max validators {max_validators}")
         if offset and offset < election.get_election_finishes_in():
             log.warning(f"Not joining, as too early based on prudent settings: offset {offset}s, "
                         f"but until election finish {e_finish_in}s")
             return False
-        lower_than_mine = [s < election_stake for s in stakes]
-        # 100 - our's is the highest, 0 - is the lowest
-        join_threshold = (len(lower_than_mine) / len(stakes)) * 100
-        telemetry_holder["join_threshold"] = join_threshold
-        if join_threshold < prudent_settings.join_threshold:
+        if max_validators > len(stakes):
+            # there are free slots still available
+            return True
+        if join_threshold >= prudent_settings.join_threshold:
             log.warning(f"Not joining as not satisfying prudent election join threshold: {join_threshold}. Stake given {election_stake}.")
             return False
         return True
@@ -360,10 +365,11 @@ class ElectionsRoutine(object):
 
                             participant_stakes = self._lite_client.get_current_participant_stakes(elector_addr)
                             participant_number = len(participant_stakes)
-                            lowest_stake = min(participant_stakes)
+                            lowest_stake = min(participant_stakes) if participant_stakes else 0
                             election_validator_params = self._lite_client.get_election_validator_params()
-                            valid_stakes = sorted(participant_stakes, reverse=True)[:election_validator_params.max_validators]
-                            lowest_valid_stake = min(valid_stakes)
+                            max_validators = election_validator_params.max_validators
+                            valid_stakes = sorted(participant_stakes, reverse=True)[:max_validators]
+                            lowest_valid_stake = min(valid_stakes) if valid_stakes else 0
                             election_status_telemetry_data["lowest_valid_stake"] = lowest_valid_stake
                             election_status_telemetry_data["participants"] = participant_number
                             election_status_telemetry_data["lowest_stake"] = lowest_stake
@@ -384,11 +390,13 @@ class ElectionsRoutine(object):
                                     stake_per_election = (validator_balance + recovered_stake + active_election_stakes) / len(new_elections)
                                     balance_left = validator_balance
                                     election_stake = self._compute_stake(stake_per_election)
+                                    election_status_telemetry_data["election_stake"] = election_stake
                                     for election in new_elections:
                                         if self._election_settings.PRUDENT_ELECTION_SETTINGS and \
                                                 not self._satisfies_prudent_settings(election=election,
                                                                                      prudent_settings=self._election_settings.PRUDENT_ELECTION_SETTINGS,
                                                                                      election_stake=election_stake,
+                                                                                     max_validators=max_validators,
                                                                                      stakes=valid_stakes,
                                                                                      telemetry_holder=election_status_telemetry_data):
                                             log.warning("Prudent settings not satisfied, not joining.")
@@ -411,53 +419,75 @@ class ElectionsRoutine(object):
                                     log.info("Joining in depool mode")
                                     depool_list = self._election_settings.DEPOOL_LIST
                                     for depool_data in depool_list:
+                                        send_tick_tock = False
+                                        depool_healthy = True
                                         log.info("Checking DePool: {}".format(depool_data))
                                         proxy_addresses = depool_data.proxy_addresses
                                         depool_addr = depool_data.depool_address
                                         log.info("Proxy addresses: {}, for: {}".format(proxy_addresses, depool_addr))
                                         depool_events = self._tonos_cli.get_depool_events(depool_addr)
-                                        election_events = [event for event in depool_events if
-                                                           isinstance(event, DePoolElectionEvent)]
+                                        # check healtheness of depool
+                                        if depool_events:
+                                            last_event = depool_events[0]
+                                            election_status_telemetry_data['depool_event'] = str(last_event)
+                                            # raise error if events signaling that DePool is malfunctioning
+                                            if isinstance(last_event, DePoolLowBalanceEvent):
+                                                if depool_data.replenish_settings:
+                                                    if time.time() - depool_data.replenish_settings.get_last_replenishment_time() >= depool_data.replenish_settings.max_period:
+                                                        depool_data.replenish_settings.set_last_replenishment_time(time.time())
+                                                        log.info(f"Automatically replenishing depool with {depool_data.replenish_settings.topup_sum}")
+                                                        election_status_telemetry_data["depool_replenish"] = depool_data.replenish_settings.topup_sum.as_tokens()
+                                                        self._tonos_cli.depool_replenish(depool_addr=depool_addr,
+                                                                                         wallet_addr=validator_addr,
+                                                                                         value=depool_data.replenish_settings.topup_sum,
+                                                                                         private_key=self._secret_manager.get_validator_seed(),
+                                                                                         custodian_keys=self._secret_manager.get_custodian_seeds())
+                                                        send_tick_tock = True
+                                                depool_healthy = False
+                                                election_status_telemetry_data['error'] = str(LowDePoolBalanceException("DePool Balance is low to operate",
+                                                                                                                        balance=last_event.balance))
 
-                                        send_tick_tock = False
-                                        if election_events:
-                                            log.debug("Found election events: {}".format(election_events))
-                                            joined_events = []
-                                            for event in election_events:
-                                                log.info("Checking proxy: {}".format(event.proxy))
-                                                filtered_election = next((election for election in new_elections
-                                                                          if str(election.election_id) == str(event.election_id)),
-                                                                         None)
-                                                if filtered_election:
-                                                    depool_account = self._tonos_cli.get_account(depool_addr)
-                                                    stake = depool_account.balance // 2 if len(self._active_elections) else depool_account.balance
-                                                    if depool_data.prudent_election_settings and \
-                                                            not self._satisfies_prudent_settings(election=filtered_election,
-                                                                                                 prudent_settings=depool_data.prudent_election_settings,
-                                                                                                 election_stake=stake,
-                                                                                                 stakes=valid_stakes,
-                                                                                                 telemetry_holder=election_status_telemetry_data):
-                                                        log.warning("Prudent settings not satisfied, not joining.")
-                                                        continue
-                                                    log.info("Joining via proxy: {} to: {}".format(event.proxy,
-                                                                                                   filtered_election))
-                                                    self._join_elections_depool_mode(depool_addr=depool_addr,
-                                                                                     validator_addr=validator_addr,
-                                                                                     election=filtered_election,
-                                                                                     proxy_addr=event.proxy,
-                                                                                     election_stake=stake,
-                                                                                     elector_params=elector_params)
-                                                    joined_events.append(event)
-                                            if not joined_events:
-                                                # not joined any events
+                                        if depool_healthy:
+                                            election_events = [event for event in depool_events if
+                                                               isinstance(event, DePoolElectionEvent)]
+
+                                            elections_to_join = []  # type: List[Tuple[DePoolElectionEvent, Election]]
+                                            if election_events:
+                                                log.debug("Found election events: {}".format(election_events))
+                                                # select ongoing elections that matching our events
+                                                for election in new_elections:
+                                                    for event in election_events:
+                                                        if str(election.election_id) == str(event.election_id):
+                                                            elections_to_join.append((event, election))
+                                                            break
+                                            if not elections_to_join:
+                                                log.info(
+                                                    "No relevant signing events in depool contract at a moment: {}".format(
+                                                        depool_data))
                                                 send_tick_tock = True
-                                                log.warning("Not found matching with the current elections events")
-                                        else:
-                                            # not election events found
-                                            log.info(
-                                                "No relevant signing events in depool contract at a moment: {}".format(
-                                                    depool_data))
-                                            send_tick_tock = True
+                                            # Join elections
+                                            for event, election in elections_to_join:
+                                                log.info("Joining via proxy: {}".format(event.proxy))
+                                                depool_account = self._tonos_cli.get_account(depool_addr)
+                                                stake = depool_account.balance if len(self._active_elections) else depool_account.balance // 2
+                                                election_status_telemetry_data["election_stake"] = stake
+                                                if depool_data.prudent_election_settings and \
+                                                        not self._satisfies_prudent_settings(election=election,
+                                                                                             prudent_settings=depool_data.prudent_election_settings,
+                                                                                             election_stake=stake,
+                                                                                             max_validators=max_validators,
+                                                                                             stakes=valid_stakes,
+                                                                                             telemetry_holder=election_status_telemetry_data):
+                                                    log.warning("Prudent settings not satisfied, not joining.")
+                                                    continue
+                                                log.info("Joining via proxy: {} to: {}".format(event.proxy,
+                                                                                               election))
+                                                self._join_elections_depool_mode(depool_addr=depool_addr,
+                                                                                 validator_addr=validator_addr,
+                                                                                 election=election,
+                                                                                 proxy_addr=event.proxy,
+                                                                                 election_stake=stake,
+                                                                                 elector_params=elector_params)
 
                                         if send_tick_tock:
                                             # send tick-tock
@@ -470,13 +500,7 @@ class ElectionsRoutine(object):
                                                 depool_data.set_last_ticktock(time.time())
                                                 log.info("Ticktock sent at {}".format(depool_data.get_last_ticktock()))
 
-                                        if depool_events:
-                                            last_event = depool_events[0]
-                                            election_status_telemetry_data['depool_event'] = str(last_event)
-                                            # raise error if events signaling that DePool is malfunctioning
-                                            if isinstance(last_event, DePoolLowBalanceEvent):
-                                                raise LowDePoolBalanceException("DePool Balance is low to operate",
-                                                                                balance=last_event.balance)
+
                                 else:
                                     log.info("Skipping validations due to set election mode: {}".format(self._election_mode))
                         self.save_active_elections()
