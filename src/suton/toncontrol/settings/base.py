@@ -1,4 +1,4 @@
-from utils.serialization import JsonAware
+from toncommon.serialization.json import JsonAware
 
 
 class BaseTonControlSettings(JsonAware):

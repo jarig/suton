@@ -15,12 +15,6 @@ class DePoolEvent(object):
         # for custom implementations
         pass
 
-    @staticmethod
-    def _hex_to_int(val: str) -> int:
-        if val and val.startswith("0x"):
-            return int(val, 0)
-        return int(val, 0)
-
     def __str__(self):
         return f"Event {self.name}"
 

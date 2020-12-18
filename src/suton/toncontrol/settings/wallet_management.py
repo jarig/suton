@@ -1,7 +1,7 @@
 from typing import List
 
 from settings.base import BaseTonControlSettings
-from settings.models.wallets import WalletSettings, ActionSpec, WalletBalanceCheckAction
+from settings.wallet_settings.wallets import WalletSettings, ActionSpec, WalletBalanceCheckAction
 
 
 class WalletManagementSettings(BaseTonControlSettings):

@@ -2,8 +2,8 @@ from enum import Enum
 from typing import List
 
 from settings.base import BaseTonControlSettings
-from settings.models.depool import DePoolSettings
-from settings.models.prudent_elections import PrudentElectionSettings
+from settings.depool_settings.depool import DePoolSettings
+from settings.depool_settings.prudent_elections import PrudentElectionSettings
 
 
 class ElectionMode(Enum):

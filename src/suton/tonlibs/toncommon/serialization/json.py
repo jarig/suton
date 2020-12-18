@@ -1,8 +1,10 @@
 from enum import Enum
-from typing import List, Dict
+from typing import List
 
 
 class JsonAware(object):
+
+    DESERIALIZE_VIA_CONSTRUCTOR = False
 
     class DataContainer(object):
         pass
@@ -13,15 +15,23 @@ class JsonAware(object):
 
     @classmethod
     def create(cls, data: dict):
-        instance = cls()
-        for item, val in data.items():
-            try:
-                default_val = getattr(instance, item)
-            except AttributeError:
-                continue
-            if isinstance(default_val, Enum):
-                val = default_val.__class__(val)
-            setattr(instance, item, val)
+        if cls.DESERIALIZE_VIA_CONSTRUCTOR:
+            init_data = {}
+            constructor_args = cls.__init__.__code__.co_varnames[:cls.__init__.__code__.co_argcount]
+            for prop in data.keys():
+                if prop in constructor_args:
+                    init_data[prop] = data[prop]
+            instance = cls(**init_data)
+        else:
+            instance = cls()
+            for item, val in data.items():
+                try:
+                    default_val = getattr(instance, item)
+                except AttributeError:
+                    continue
+                if isinstance(default_val, Enum):
+                    val = default_val.__class__(val)
+                setattr(instance, item, val)
         return instance
 
     def to_json(self):
@@ -30,7 +40,7 @@ class JsonAware(object):
         }
         for attr in dir(self):
             value = getattr(self, attr)
-            if not attr.startswith("_") and not callable(value):
+            if not attr.startswith("__") and not callable(value):
                 if isinstance(value, JsonAware):
                     result[attr] = value.to_json()
                 elif isinstance(value, list):

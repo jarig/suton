@@ -5,9 +5,8 @@ import logging
 import sys
 import os
 from logging.handlers import RotatingFileHandler
-# TODO: remove once tonlibs are moved away
-from settings.models.prudent_elections import PrudentElectionSettings
 
+# TODO: remove once tonlibs are moved away
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'tonlibs'))
 
 
@@ -18,10 +17,13 @@ from tonvalidator.core import TonValidatorEngineConsole
 from tonliteclient.core import TonLiteClient
 from tonoscli.core import TonosCli
 from tonfift.core import FiftCli
+from toncommon.models.TonCoin import TonCoin
 from settings.elections import ElectionSettings, ElectionMode
 from settings.wallet_management import WalletManagementSettings
 from settings.core import TonSettings
-from settings.models.depool import DePoolSettings
+from settings.depool_settings.auto_replenish import AutoReplenishSettings
+from settings.depool_settings.prudent_elections import PrudentElectionSettings
+from settings.depool_settings.depool import DePoolSettings
 
 
 def main():
@@ -109,7 +111,9 @@ def main():
                                                               WalletManagementSettings.Wallet,
                                                               WalletManagementSettings.WalletBalanceCheckAction,
                                                               DePoolSettings,
-                                                              PrudentElectionSettings])
+                                                              PrudentElectionSettings,
+                                                              TonCoin,
+                                                              AutoReplenishSettings])
         log.debug("Settings in use: \n {}".format(ton_control_settings))
     if args.work_dir:
         ton_control_settings.TON_WORK_DIR = args.work_dir
@@ -224,7 +228,7 @@ def configure_logging(log_dir):
             "file": "telemetry.log"
         },
         # external libs
-        "tonvalidator | toncommon": {
+        "tonvalidator | toncommon | tonoscli": {
             "file": "tonutils.log"
         }
     }

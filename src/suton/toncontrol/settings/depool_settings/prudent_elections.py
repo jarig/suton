@@ -1,10 +1,11 @@
 import logging
-from utils.serialization import JsonAware
+from toncommon.serialization.json import JsonAware
 
 log = logging.getLogger("")
 
 
 class PrudentElectionSettings(JsonAware):
+    DESERIALIZE_VIA_CONSTRUCTOR = True
 
     def __init__(self, election_end_join_offset=None, join_threshold=0):
         """
@@ -18,14 +19,6 @@ class PrudentElectionSettings(JsonAware):
         """
         self.election_end_join_offset = election_end_join_offset
         self.join_threshold = join_threshold
-
-    @classmethod
-    def create(cls, data: dict):
-        return PrudentElectionSettings(**data)
-
-    @classmethod
-    def get_class_code_name(cls) -> str:
-        return cls.__qualname__
 
     def __str__(self):
         return f"Prudent Settings: {self.election_end_join_offset} {self.join_threshold}"

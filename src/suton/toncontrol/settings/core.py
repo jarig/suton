@@ -3,7 +3,7 @@ from typing import List
 from settings.base import BaseTonControlSettings
 from settings.elections import ElectionSettings
 from settings.wallet_management import WalletManagementSettings
-from utils.serialization import JsonAware
+from toncommon.serialization.json import JsonAware
 
 
 class TonSettings(BaseTonControlSettings):

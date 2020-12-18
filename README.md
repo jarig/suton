@@ -229,7 +229,7 @@ Here is example config for this:
 ```python
 from suton.toncontrol.settings.core import TonSettings
 from suton.toncontrol.settings.elections import ElectionSettings, ElectionMode
-from suton.toncontrol.settings.models.depool import DePoolSettings
+from suton.toncontrol.settings.depool_settings.depool import DePoolSettings
 
 # NOTE: TickTock events are send via Validator wallet to DePool directly
 
@@ -276,9 +276,9 @@ So, it's important to play this game right and to make it easier SuTON provides 
 
 Example with the DePool mode:
 ```python
-from suton.toncontrol.settings.models.prudent_elections import PrudentElectionSettings
+from suton.toncontrol.settings.depool_settings.prudent_elections import PrudentElectionSettings
 from suton.toncontrol.settings.elections import ElectionSettings, ElectionMode
-from suton.toncontrol.settings.models.depool import DePoolSettings
+from suton.toncontrol.settings.depool_settings.depool import DePoolSettings
 
 class DepoolElectionSettings(ElectionSettings):
 

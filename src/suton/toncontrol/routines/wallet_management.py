@@ -5,7 +5,7 @@ import time
 from typing import List
 
 from logstash.client import LogStashClient
-from settings.models.wallets import ActionSpec
+from settings.wallet_settings.wallets import ActionSpec
 from tonoscli.core import TonosCli
 from tonvalidator.core import TonValidatorEngineConsole
 

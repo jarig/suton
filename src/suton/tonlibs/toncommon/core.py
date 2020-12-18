@@ -14,7 +14,8 @@ class TonExec(object):
         :param args: args to tonos-cli
         :return: return value and stdout of tonos-cli
         """
-        params = [self._exec_path] + args
+        str_args = [str(arg) for arg in args]
+        params = [self._exec_path] + str_args
         try:
             out = subprocess.check_output(params, timeout=timeout, cwd=cwd,
                                           # without stdin attached TON utilities failing
