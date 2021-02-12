@@ -17,22 +17,25 @@ class TonExec(object):
         str_args = [str(arg) for arg in args]
         params = [self._exec_path] + str_args
         try:
-            out = subprocess.check_output(params, timeout=timeout, cwd=cwd,
-                                          # without stdin attached TON utilities failing
-                                          stdin=subprocess.PIPE).decode("utf-8")
+            process = subprocess.run(params, timeout=timeout, cwd=cwd,
+                                     capture_output=True,
+                                     check=True, text=True,
+                                     # without stdin attached TON utilities failing
+                                     stdin=subprocess.PIPE)
+            out = process.stdout.strip()
             retcode = 0
         except subprocess.CalledProcessError as e:
             retcode = e.returncode
-            out = 'Cmd: {}\n'.format(params)
-            out += e.output.decode("utf-8")
+            out = f'Cmd: {params}, {e}\n'
+            out += e.output
         except subprocess.TimeoutExpired as e:
             retcode = 2
-            out = 'Cmd: {} (TIMEOUT {}})\n'.format(params, timeout)
-            out += e.output.decode("utf-8")
+            out = f'Cmd: {params} (TIMEOUT {timeout})\n'
+            out += e.output
         except Exception as e:
             retcode = -1
-            out = 'Cmd: {} (TIMEOUT {})\n'.format(params, timeout)
+            out = f'Cmd: {params} (TIMEOUT {timeout})\n'
             out += str(e)
-        log.debug("Code: {}. Output: {}".format(retcode, out))
+        log.debug(f"Code: {retcode}. Output: {out}")
         return retcode, out
 

@@ -2,17 +2,22 @@ import hashlib
 import json
 import logging
 import os
-from typing import List, Optional
+from typing import List, Optional, Union, Dict
 
 from pip._vendor import requests
 from toncommon.contextmanager import secret_manager
 from toncommon.core import TonExec
+from toncommon.models.ElectionData import ElectionData, ElectionMember
+from toncommon.models.TonAddress import TonAddress
 from toncommon.models.TonCoin import TonCoin
 from toncommon.models.depool.DePoolElectionEvent import DePoolElectionEvent
 from toncommon.models.depool.DePoolEvent import DePoolEvent
+from toncommon.models.depool.DePoolInfo import DePoolInfo
 from toncommon.models.depool.DePoolLowBalanceEvent import DePoolLowBalanceEvent
 from toncommon.models.TonAccount import TonAccount
 from toncommon.models.TonTransaction import TonTransaction
+from toncommon.utils import HexUtils
+from toncommon.models.ElectionParams import ElectionValidatorParams, StakeParams, ElectionParams
 
 log = logging.getLogger("tonoscli")
 
@@ -23,15 +28,17 @@ class TonosCli(TonExec):
     """
     CONFIG_NAME = "tonos-cli.conf.json"
 
-    def __init__(self, cli_path, cwd, config_url, abi_path=None, tvc_path=None):
+    def __init__(self, cli_path, cwd, config_url, wallet_abi_url=None, wallet_tvc_url=None,
+                 ton_endpoints=None):
         super().__init__(cli_path)
         with open(cli_path, "rb") as f:
             h = hashlib.md5(f.read())
-            h.update(config_url.encode())
+            h.update(f"{config_url}.{ton_endpoints}".encode())
         self._cwd = os.path.join(cwd, h.hexdigest())
         self._config_url = config_url
-        self._abi_path = abi_path
-        self._tvc_path = tvc_path
+        self._tvc_wallet_url = wallet_tvc_url
+        self._wallet_abi_url = wallet_abi_url
+        self._ton_endpoints = ton_endpoints
 
     def _run_command(self, command: str, options: list = None, retries=5):
         """
@@ -42,6 +49,12 @@ class TonosCli(TonExec):
             for i in range(retries):
                 ret, out = self._execute(["config", "--url", self._config_url],
                                          cwd=self._cwd)
+                if self._ton_endpoints:
+                    log.info(f"Configuring endpoints: {self._ton_endpoints}")
+                    ret2, out2 = self._execute(["config", "endpoint", "add", self._config_url, self._ton_endpoints],
+                                               cwd=self._cwd)
+                    out = f"{out} {out2}"
+                    ret = ret2 + ret
                 if ret != 0:
                     if out and "timeout" in out.lower():
                         log.info("Retrying tonos command due to timeout")
@@ -75,6 +88,104 @@ class TonosCli(TonExec):
             return obj
         return None
 
+    def get_config(self, index: int) -> (str, Optional[dict]):
+        """ ex:
+            Config p17: {
+              "max_stake": "10000000000000000",
+              "max_stake_factor": 196608,
+              "min_stake": "10000000000000",
+              "min_total_stake": "100000000000000"
+            }
+        """
+        out = self._run_command('getconfig', [str(index)])
+        config_pattern = f"Config p{index}:"
+        payload = ""
+        payload_started = False
+        for line in out.splitlines():
+            if line.startswith(config_pattern):
+                payload_started = True
+                line = line.replace(config_pattern, "").strip()
+            if payload_started:
+                payload += line
+        if payload:
+            return json.loads(payload)
+        return None
+
+    def get_stake_params(self) -> StakeParams:
+        data = self.get_config(17)
+        return StakeParams(data["min_stake"], data["max_stake"])
+
+    def get_election_validator_params(self) -> (ElectionValidatorParams, None):
+        data = self.get_config(16)
+        if data and "max_validators" in data:
+            return ElectionValidatorParams(max_validators=data["max_validators"],
+                                           max_main_validators=data["max_main_validators"],
+                                           min_validators=data["min_validators"])
+        return None
+
+    def get_elector_params(self) -> (ElectionParams, None):
+        data = self.get_config(15)
+        if data:
+            return ElectionParams(validators_elected_for=data["validators_elected_for"],
+                                  elections_start_before=data["elections_start_before"],
+                                  elections_end_before=data["elections_end_before"],
+                                  stake_held_for=data["stake_held_for"])
+        return None
+
+    def get_elector_address(self) -> Optional[str]:
+        data = self.get_config(1)
+        if data:
+            return TonAddress.set_address_prefix(data.strip(), TonAddress.Type.MASTER_CHAIN)
+        return None
+
+    def compute_returned_stake(self, elector_addr: str, validator_wallet_addr: str, elector_abi_url: str):
+        # run ${ELECTOR_ADDR} compute_returned_stake "{\"wallet_addr\":\"${MSIG_ADDR_HEX}\"}" --abi ${CONFIGS_DIR}/Elector.abi.json
+        data = self.exec_command('run', elector_addr, 'compute_returned_stake',
+                                 {"wallet_addr": validator_wallet_addr},
+                                 abi_url=elector_abi_url)
+        if data:
+            return [HexUtils.hex_to_int(data.get("value0"))]
+        return []
+
+    def compute_returned_stake_fift(self, elector_addr: str, validator_wallet_addr: str):
+        # runget ${ELECTOR_ADDR} compute_returned_stake "${MSIG_ADDR_HEX}" 2>&1
+        data = self.exec_command_fift('runget', elector_addr, 'compute_returned_stake', validator_wallet_addr)
+        if data:
+            return [HexUtils.hex_to_int(data[0])]
+        return []
+
+    def get_active_election_ids(self, elector_addr: str, elector_abi_url: str) -> List[str]:
+        # $(${UTILS_DIR}/tonos-cli run ${ELECTOR_ADDR} active_election_id {} --abi ${CONFIGS_DIR}/Elector.abi.json
+        data = self.exec_command('run', elector_addr, 'active_election_id',
+                                 {}, abi_url=elector_abi_url)
+        if data:
+            value = HexUtils.hex_to_int(data.get("value0"))
+            if value:  # non-zero, non-empty value
+                return [str(value)]
+        return []
+
+    def get_active_election_ids_fift(self, elector_addr: str) -> List[str]:
+        # using fift
+        data = self.exec_command_fift('runget', elector_addr, 'active_election_id')
+        if data:
+            value = HexUtils.hex_to_int(data[0])
+            if value:  # non-zero, non-empty value
+                return [str(value)]
+        return []
+
+    def get_election_data(self, elector_addr: str, elector_abi_url: str) -> (ElectionData, None):
+        data = self.exec_command('run', elector_addr, 'get',
+                                 {}, abi_url=elector_abi_url)
+        if data:
+            return ElectionData(election_open=data.get("election_open", False),
+                                members=[ElectionMember(addr=m_data.get("addr"),
+                                                        stake=m_data.get("stake", 0),
+                                                        max_factor=m_data.get("max_factor", 3),
+                                                        timestamp=m_data.get("time"))
+                                         for m_hash, m_data in data.get("cur_elect", {}).get("members", {}).items()
+                                         ])
+        return None
+
     def get_account(self, address) -> TonAccount:
         out = self._run_command('account', [address])
         data = {}
@@ -91,16 +202,28 @@ class TonosCli(TonExec):
         return TonAccount(acc_type=data["acc_type"], balance=int(data.get("balance", 0).replace("nanoton", "").strip()),
                           last_paid=int(data.get("last_paid")), data=data.get("data(boc)"))
 
-    def call_command(self, address: str, command: str, payload: dict,
-                     abi_url: str, private_key: str = None) -> Optional[dict]:
-        cmd = [address, command, str(json.dumps(payload)), "--abi", self._materialize_abi(abi_url)]
+    def _run_command_and_parse_result(self, command: str,
+                                      options: List[str] = None, private_key: str = None) -> Optional[dict]:
+        cmd_args = options.copy() if options else []
         with secret_manager(secrets=[private_key]):
             if private_key:
-                cmd.extend(['--sign', str(private_key)])
-            out = self._run_command('call', cmd)
+                cmd_args.extend(['--sign', str(private_key)])
+            out = self._run_command(command, cmd_args)
             data = self._parse_result(out)
             log.debug("Tonoscli call: {}".format(out))
         return data
+
+    def exec_command(self, command: str, address: str, method: str, payload: dict,
+                     abi_url: str, private_key: str = None) -> Optional[dict]:
+        cmd = [address, method, str(json.dumps(payload)), "--abi", self._materialize_abi(abi_url)]
+        return self._run_command_and_parse_result(command, cmd, private_key=private_key)
+
+    def exec_command_fift(self, command: str, address: str, method: str, payload: str = None,
+                          private_key: str = None) -> Union[Optional[Dict], Optional[List]]:
+        cmd = [address, method]
+        if payload:
+            cmd.append(str(payload))
+        return self._run_command_and_parse_result(command, cmd, private_key=private_key)
 
     def generate_key_pair_file(self, file_location, phrase):
         with secret_manager(secrets=[phrase]):
@@ -114,7 +237,7 @@ class TonosCli(TonExec):
                                               "allBalance": allBalance,
                                               "payload": str(payload)})
             out = self._run_command('call', [address, "submitTransaction", str(transaction_payload),
-                                    "--abi", self._abi_path, "--sign", str(private_key)])
+                                    "--abi", self._materialize_abi(self._wallet_abi_url), "--sign", str(private_key)])
             data = self._parse_result(out)
             log.debug("Tonoscli: {}".format(out))
         return TonTransaction(tid=data.get("transId"))
@@ -124,7 +247,7 @@ class TonosCli(TonExec):
             for key in private_keys:
                 transaction_payload = json.dumps({"transactionId": transaction_id})
                 out = self._run_command('call', [address, "confirmTransaction", transaction_payload,
-                                        "--abi", self._abi_path, "--sign", key])
+                                        "--abi", self._materialize_abi(self._wallet_abi_url), "--sign", key])
                 log.debug("Tonoscli: {}".format(out))
         return TonTransaction(tid=transaction_id)
 
@@ -176,11 +299,11 @@ class TonosCli(TonExec):
 
         return events
 
-    def terminate_depool(self, address, private_key: str):
+    def terminate_depool(self, address, private_key: str, abi_url: str):
         with secret_manager(secrets=[private_key]):
             transaction_payload = json.dumps({})
             out = self._run_command('call', [address, "terminator", transaction_payload,
-                                    "--abi", self._abi_path, "--sign", str(private_key)])
+                                    "--abi", self._materialize_abi(abi_url), "--sign", str(private_key)])
             log.debug("Tonoscli: {}".format(out))
 
     def depool_ticktock(self, depool_address: str, wallet_address: str, private_key: str,
@@ -192,4 +315,12 @@ class TonosCli(TonExec):
             data = self._parse_result(out)
             if custodian_keys:
                 self.confirm_transaction(wallet_address, transaction_id=data.get("transId"), private_keys=custodian_keys)
+
+    def depool_info(self, depool_address: str, abi_url: str) -> DePoolInfo:
+        # tonos-cli run 0:5e76094228c2cbc38b16e69507cfe7e0592b5ef67b1f3e3c11a0d3317f9532fa getDePoolInfo {} --abi pool_01.02.21/DePool.abi.json
+        data = self.exec_command('run', depool_address, 'getDePoolInfo', {}, abi_url=abi_url)
+        return DePoolInfo(pool_closed=data["poolClosed"],
+                          proxies=data["proxies"],
+                          validator_wallet=data["validatorWallet"],
+                          participant_reward_fraction=data["participantRewardFraction"])
 

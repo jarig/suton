@@ -11,16 +11,18 @@ RUN apt-get update && \
     && useradd --uid "$HOST_TON_CONTROL_GROUP_ID" --gid "$HOST_TON_CONTROL_GROUP_ID" --create-home --shell /bin/bash toncontrol && \
     echo "toncontrol ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
+RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ focal main restricted universe multiverse" >> /etc/apt/sources.list;\
+    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 871920D1991BC93C;\
+    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 3B4FE6ACC0B21F32;\
+    apt-get update && apt-get install -y \
+    gpg \
+    tar \
+    build-essential \
+    libzstd-dev
+
 RUN python3.7 -m pip install --upgrade pip
 
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/build/lite-client /opt/ton/lite-client
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/build/validator-engine-console /opt/ton/validator-engine-console
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/build/utils /opt/ton/utils
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/build/crypto /opt/ton/crypto
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/crypto/fift/lib /opt/ton/fift-libs/libs
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/crypto/smartcont /opt/ton/fift-libs/smartcont
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/configs /opt/ton/configs
-
+COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /ton-node/tools /opt/ton/tools
 
 WORKDIR /tmp
 
@@ -47,12 +49,11 @@ ENV TON_CONTROL_DEFAULT_STAKE="30%"
 ENV TON_CONTROL_ELECTION_MODE=""
 ENV TON_CONTROL_SETTINGS=""
 ENV TON_CONTROL_STAKE_MAX_FACTOR="3"
-ENV TONOS_CLI_CONFIG_URL=https://$TON_ENV
 ENV TON_CONTROL_QUEUE_NAME=node-0
 ENV TON_CONTROL_VALIDATOR_NETWORK_ADDR=tonvalidator:3030
 ENV TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR=tonvalidator:3031
-ENV TON_CONTROL_ABI_PATH=/opt/ton/configs/SafeMultisigWallet.abi.json
-ENV TON_CONTROL_TVC_PATH=/opt/ton/configs/SafeMultisigWallet.tvc
+ENV TON_CONTROL_WALLET_ABI_URL=https://raw.githubusercontent.com/tonlabs/ton-labs-contracts/master/solidity/safemultisig/SafeMultisigWallet.abi.json
+ENV TON_CONTROL_WALLET_TVC_URL=https://github.com/tonlabs/ton-labs-contracts/raw/master/solidity/safemultisig/SafeMultisigWallet.tvc
 ENV FIFT_INCLUDES=/opt/ton/fift-libs/libs:/opt/ton/fift-libs/smartcont
 
 # Run Ton Control

@@ -3,6 +3,9 @@ from toncommon.serialization.json import JsonAware
 
 class BaseTonControlSettings(JsonAware):
 
+    def init(self):
+        pass
+
     def __str__(self):
         result = ""
         for attr in dir(self):

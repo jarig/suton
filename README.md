@@ -11,6 +11,7 @@ Status:
 - :heavy_check_mark: TonControl automates participation in elections
 - :heavy_check_mark: TonControl reports telemetry via LogStash using TCP protocol
 - :heavy_check_mark: TonControl automates participation in DePool elections
+- :heavy_check_mark: Support of validator node on Rust
 - **=== We are here ===**
 - :clock1: LogStash publishing parsed tonvalidator logs
 - :clock1: Extendable TonControl with own secret-managers
@@ -19,24 +20,55 @@ Status:
 - :clock1: TonLibs are moved to own project and re-usable for other needs
 - :clock1: Extendable TonControl with own service-bus message processors
 
+# Architecture
+
+![Alt text](docs/imgs/suton.png?raw=true "Architecture overview")
+
+Notes:
+- Validator node doesn’t have any extra ports exposed
+- Every deployment can be scaled independently and whenever is required
+- Very flexible in controlling costs - Validator, Controller and Logstash are deployed via Docker (backed-up with docker-compose) either to bare-metal machine or VM.
+  At the same time monitoring can be either custom solution or one of SaaS solutions with pay-as-you-go subscriptions. The same applies for message-queue (either custom deployment or SaaS).
+- Pub/Sub layer provides good abstraction and allows to inject many type of notifications and ways to control validator(s), including safe for the validator web interfaces.
+- It is easy to integrate any kind of alerting and automatic response to those alerts.
+
 # Usage
 
 ## Prerequisite
-- Generate secret seed for work-chain `-1` (validators) using `tonoscli` utility as described in the [Ton Dev doc](https://docs.ton.dev/86757ecb2/p/94921e-multisignature-wallet-management-in-tonos-cli) 
-- Install Python3 and Docker on your machine (no need to enable Hyper-V on windows, but requires docker CLI utilities, `docker-compose` in particular)
-- Install Docker-daemon on remote machine (validator), for example [Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
-- For setup phase make your server accessible via SSH by root via ssh-keys (or grant root perms for some account you are going to use).
+- Generate secret seed for if want to use direct-validation in work-chain (`-1:`) or base-chain one (`0:`) if via depool. 
+  Use `tonoscli` utility as described in the [Ton Dev doc](https://docs.ton.dev/86757ecb2/p/94921e-multisignature-wallet-management-in-tonos-cli) 
+- Install Python3.7 and Docker on your machine (no need to enable Hyper-V on windows if node located remotely, but requires docker CLI utilities, `docker-compose` in particular). 
+  If you will run docker containers locally, then you will need full Docker(with Hyper-V on windows).
+- *(if validator is remote)*
+  Install Docker-daemon on remote machine (aka validator), [Ubuntu](https://docs.docker.com/engine/install/ubuntu/) example.
+- *(if validator is remote)*
+  For setup phase make your server accessible via SSH by root via ssh-keys (or grant root perms for some account you are going to use).
   Remove this ssh access once setup is finished (or revoke root perms for the account used).
   *Root access will be required by Docker, so that it would be able to connect to remote Docker daemon and build/run images.*
-- Prepare you validator machine which should have dedicated place for Ton work-dir (500GB-1TB SSD), and work-dir for ton-controller (no special requirements). 
+- Prepare you validator machine which should have dedicated place for Ton work-dir (500GB-1TB SSD), and work-dir for ton-controller (no special requirements).
+  *(if on NIX)* Grant owner permission for 2 work-folders you will dedicate for `ton-control` and for `ton-validator`.   
+  Default is `1001:1001` for validator and `1002:1002` for `toncontrol`. Ex:  
+  `$ chown 1001:1001 /data/ton-validator` 
 - Optional: generate RSA keys, place private key to `<ton-controller-work-dir/configs/keys>`. 
   Encrypt your wallet seed with public key and convert to base64 format, [details here](#seed-encryption).
 
-Create following project structure:
+## Quick Start
+
+Example workspace: 
+https://github.com/jarig/suton-workspace
+
+## Workspace Setup
+
+Take example project as a base:  
+https://github.com/jarig/suton-workspace
+
+or start your own from scratch, create following project structure:
 ```text
 node-1/
       configs/        (optional)
-          logstash/   # logstash configs should be under this directory
+          logstash/        # logstash configs should be under this directory
+              host/        # configs for pushing telemetry from the host machine
+              ton_control/ # configs for ton_control telemetry
       settings.py
 manage.py
 requirements.txt
@@ -57,6 +89,10 @@ import os
 class NodeSettings(TonSettings):
     # where to connect to
     DOCKER_HOST = "ssh://root@<validator machine IP>"
+    
+    # any name that will help you to identify the node in the telemetry later on
+    NODE_NAME = "my-node"
+
     # test or main
     TON_ENV = "net.ton.dev"
     # work-dir on HOST machine (where db, logs and configs will be)
@@ -78,14 +114,13 @@ class NodeSettings(TonSettings):
 More info about possible settings options and [seed encryption](#seed-encryption) described here in the [settings](#settings) section.
 
 Note: `TON_WORK_DIR` and `TON_CONTROL_WORK_DIR` should be pre-created on Host machine.
-Also based on other settings you might put extra configuration files into them such as `configs/logstash` for controlling logstash outputs or `configs/keys` for encryption functionality.
-Once all files in place grant `ton` and `toncontrol` users permissions to respected work folders:
+Once all folders are in place grant `ton` and `toncontrol` users permissions to respected work folders:
 ```bash
 $ chown 1001:1001 /path/to/ton-work-dir
 $ chown 1002:1002 /path/to/ton-control-dir
 ```
 
-Create in your local setup `requirements.txt` with
+Create in the your workspace root `requirements.txt` with contents
 ```requirements.txt
 git+git://github.com/jarig/suton@master#egg=suton
 ```
@@ -102,19 +137,11 @@ Then run:
    
    `$ python manage.py --node=node-1 run --build --service tonlogstash`
 
+### Workspace Example
 
-# Architecture
+You can start creating the workspace from this example which have all main things pre-configured: 
 
-![Alt text](docs/imgs/arch.jpeg?raw=true "Architecture overview")
-
-Notes:
-- Validator node doesn’t have any extra ports exposed
-- Every deployment can be scaled independently and whenever is required
-- Very flexible in controlling costs - Validator, Controller and Logstash are deployed via Docker (backed-up with docker-compose) either to bare-metal machine or VM.
-  At the same time monitoring can be either custom solution or one of SaaS solutions with pay-as-you-go subscriptions. The same applies for message-queue (either custom deployment or SaaS).
-- Pub/Sub layer provides good abstraction and allows to inject many type of notifications and ways to control validator(s), including safe for the validator web interfaces.
-- It is easy to integrate any kind of alerting and automatic response to those alerts.
-
+https://github.com/jarig/suton-workspace
 
 # Setup and Configuration
 
@@ -166,6 +193,8 @@ class NodeSettings(TonSettings):
     # optional: Setting is optional and if omitted, then will derive config based on TEST_ENV param and 
     # download them from the corresponding end-points: TEST_ENV/ton-global.config.json
     TON_VALIDATOR_CONFIG_URL = "https://raw.githubusercontent.com/tonlabs/net.ton.dev/master/configs/ton-global.config.json"
+    # In case if Elector is Solidity-based contract, then specify ABI file for it. Otherwise keep it commented out, then assumption Elector is fift-based
+    # ELECTOR_ABI_URL = "https://raw.githubusercontent.com/tonlabs/rustnet.ton.dev/6b9c09474d2a4a785b04b562d547f12967b8b53d/docker-compose/ton-node/configs/Elector.abi.json" 
 ```
 
 ## Seed Encryption
@@ -230,7 +259,6 @@ Here is example config for this:
 from suton.toncontrol.settings.core import TonSettings
 from suton.toncontrol.settings.elections import ElectionSettings, ElectionMode
 from suton.toncontrol.settings.depool_settings.depool import DePoolSettings
-
 # NOTE: TickTock events are send via Validator wallet to DePool directly
 
 class MyDepoolElectionSettings(ElectionSettings):
@@ -238,9 +266,10 @@ class MyDepoolElectionSettings(ElectionSettings):
     # set to DePool Mode
     TON_CONTROL_ELECTION_MODE = ElectionMode.DEPOOL
     DEPOOL_LIST = [
-        DePoolSettings(depool_address=f"<depool_address_in_workchain>",
-                       proxy_addresses=[f"<first_proxy_in_masterchain>",
-                                        f"<second_proxy_in_masterchain>"])
+        DePoolSettings(depool_address=f"0:<depool_address_in_workchain>",
+                       abi_url=f"https://<url to DePool ABI json>/DePool.abi.json",
+                       max_ticktock_period=1400,  # how often to send tick-tock pings
+                       )
     ]
 
 
@@ -268,11 +297,10 @@ class NodeSettings(TonSettings):
 
 ### Prudent Election Settings
 
-Participation in election is alike with a game, sometimes you can win or loose, depending on your competitors and situation 
-on among current participants. 
-If a stake you make is too low and you are not getting into minimal number of validators 
+Participation in election is like a game, sometimes you can win or loose, outcome depends from your competitors and your actions. 
+If a stake you make is too low, then you are not getting into minimal number of validators 
 (so TOP N validators made higher stake than you, where N is max allowed number of validators), then you are kicked out and TONs you payed for election requests are gone.
-So, it's important to play this game right and to make it easier SuTON provides extra settings - `PrudentSettings` that will help you to win this game.
+So, it's important to play this game right. To make it easier SuTON provides extra settings - `PrudentSettings` that will help you to win this game.
 
 Example with the DePool mode:
 ```python
@@ -285,30 +313,53 @@ class DepoolElectionSettings(ElectionSettings):
     TON_CONTROL_ELECTION_MODE = ElectionMode.DEPOOL
     DEPOOL_LIST = [
         DePoolSettings(depool_address=f"<depool_address_in_workchain>",
-                       proxy_addresses=[f"...", f"..."],
+                       abi_url=f"https://<url to DePool ABI json>/DePool.abi.json",
                        prudent_election_settings=PrudentElectionSettings(election_end_join_offset=3600,
                                                                  join_threshold=1))
     ]
 ```  
-You can define `PrudentElectionSettings` either to DePoolSettings (if you are using DePools) or in `ElectionSettings.PRUDENT_ELECTION_SETTINGS` if participating directly.
+You can define `PrudentElectionSettings` either in DePoolSettings (if you are using DePools) or in `ElectionSettings.PRUDENT_ELECTION_SETTINGS` if participating directly.
 
 Where
 
-`election_end_join_offset` - Defines time offset when to join elections before election end.
+`election_end_join_offset` - Defines time offset when decision to join elections to be made, relative to election-end time.
 So for example, if you define 600 - then stake will be made in 10 or less minutes before election ends. Defined in seconds.
 
-`join_threshold` - Percentage that defines election join condition, based on the current number of stakes
-their min_value and stake you can/want to make. Threshold = `participants_with_lower_than_your_stake / first_N_participants`.
+`join_threshold` - Percentage that defines election join condition based on the current number of stakes
+their `min_value` and stake you can/want to make. Threshold computed as = `participants_with_lower_than_your_stake / first_N_participants`.
 So for example, if you define 10, then elections will be taken if 10% of valid participants (who potentially can join) 
-has lower stake than yours at a moment in time when election join attempt is made (which regulated by `election_end_join_offset` param).
+has lower stake than yours by the time when election join attempt is made (which regulated by `election_end_join_offset` param).
 
+
+### Auto-Replenish DePool Balance
+
+DePools have own balance that they spent on staking operations, in case if this balance drops below minimum required, then DePool won't be able to join elections or perform other operations.
+To avoid this, balance need to be replenished from time to time, SuTon provides automatic way of doing this via `AutoReplenishSettings` for a DePool.
+
+Example:
+```python
+from suton.toncontrol.settings.depool_settings.prudent_elections import PrudentElectionSettings
+from suton.toncontrol.settings.elections import ElectionSettings, ElectionMode
+from suton.toncontrol.settings.depool_settings.depool import DePoolSettings
+from suton.toncontrol.settings.depool_settings.auto_replenish import AutoReplenishSettings
+from suton.tonlibs.toncommon.models.TonCoin import TonCoin
+
+class DepoolElectionSettings(ElectionSettings):
+
+    TON_CONTROL_ELECTION_MODE = ElectionMode.DEPOOL
+    DEPOOL_LIST = [
+        DePoolSettings(depool_address=f"<depool_address_in_workchain>",
+                       fabi_url="https://<url to DePool ABI json>/DePool.abi.json",
+                       replenish_settings=AutoReplenishSettings(TonCoin(2.5), max_period=7200))
+    ]
+```  
 
 ## LogStash Monitoring
 
-Logstash image going to collect sent to it telemetry from `toncontrol` (being send via TCP) and from `tonvalidator` (log parsing).
+Logstash image going to collect sent to it telemetry from configured pipelines (being send via TCP, json input).
 
 Inputs and basic filters configured for both, but for desired output you would need to create configuration.
-Logstash image has 2 pipelines (`toncontrol` and `tonvalidator` ones), each can have own configuration.
+Logstash image has 2 pipelines (`host` and `toncontrol`), each can have own configuration.
 
 ### TonControl configuration
 
@@ -329,7 +380,17 @@ All files will be automatically uploaded to remote server via ssh on `run` comma
 
 [Bonsai.io](https://bonsai.io/) providing free tier where you can send logstash data and get Kibana dashboard very fast.
 
+At a moment LogStash can send telemetry from the `toncontrol` module and `host` itself.
+You can configure output settings for them separately by placing appropriate configs in either `logstash/host` or `logstash/ton_control` folders.
 
+Example structure:
+```text
+node-1/
+      configs/        (optional)
+          logstash/        # logstash configs should be under this directory
+              host/        # configs for pushing telemetry from the host machine
+              ton_control/ # configs for ton_control telemetry
+```
 
 ## SuTon CLI Commands
 

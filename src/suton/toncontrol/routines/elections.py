@@ -7,7 +7,9 @@ import time
 from typing import List, Optional, Tuple
 
 from exceptions.depool import LowDePoolBalanceException
+from routines.election_providers.core import ElectionProvider
 from routines.models.elections import Election
+from routines.validator_providers.core import Validator
 from secrets.interfaces.secretmanager import SecretManagerAbstract
 from settings.elections import ElectionSettings, ElectionMode
 from settings.depool_settings.prudent_elections import PrudentElectionSettings
@@ -15,12 +17,9 @@ from toncommon.models.depool.DePoolElectionEvent import DePoolElectionEvent
 from toncommon.models.depool.DePoolLowBalanceEvent import DePoolLowBalanceEvent
 from toncommon.models.TonAddress import TonAddress
 from toncommon.models.TonCoin import TonCoin
-from tonfift.core import FiftCli
-from tonliteclient.core import TonLiteClient
 from tonoscli.core import TonosCli
-from tonvalidator.core import TonValidatorEngineConsole
 from tonvalidator.exceptions.connection import TonConnectionException
-from tonliteclient.models.ElectionParams import StakeParams, ElectionParams
+from toncommon.models.ElectionParams import StakeParams, ElectionParams
 
 from logstash.client import LogStashClient
 
@@ -31,19 +30,17 @@ class ElectionsRoutine(object):
 
     def __init__(self,
                  work_dir: str,
-                 validation_engine_console: TonValidatorEngineConsole,
-                 lite_client: TonLiteClient,
                  tonos_cli: TonosCli,
-                 fift_cli: FiftCli,
                  secret_manager: SecretManagerAbstract,
+                 election_provider: ElectionProvider,  # DePool or Direct
+                 validator_provider: Validator,  # CPP or Rust Implementation
                  max_sync_diff=50,
                  min_balance: int = 0,
                  election_settings: ElectionSettings = None):
         self._work_dir = work_dir
-        self._vec = validation_engine_console
-        self._lite_client = lite_client
+        self._election_provider = election_provider
+        self._validator_provider = validator_provider
         self._tonos_cli = tonos_cli
-        self._fift_cli = fift_cli
         self._secret_manager = secret_manager
         self._max_sync_diff = max_sync_diff
         self._min_balance = min_balance
@@ -92,9 +89,9 @@ class ElectionsRoutine(object):
 
     def _cleanup_election(self, election: Election):
         if election.key and election.adnl_key:
-            self._vec.delete_temp_key(election.key, election.adnl_key)
+            self._validator_provider.delete_temp_key(election.key, election.adnl_key)
         if election.key:
-            self._vec.delete_key(election.key)
+            self._validator_provider.delete_key(election.key)
         if election in self._active_elections:
             self._active_elections.remove(election)
 
@@ -106,16 +103,19 @@ class ElectionsRoutine(object):
 
     def _check_if_synced(self):
         try:
-            time_diff = self._vec.get_sync_time_diff()
-            log.debug("Time diff: {}".format(time_diff))
+            time_diff = self._validator_provider.get_sync_time_diff()
+            if time_diff is None:
+                log.error("Time diff is not available yet, node still initializing...")
+                return False
+            log.debug(f"Time diff: {time_diff}, max allowed {self._max_sync_diff}")
             self._send_telemetry('node_status', {'time_diff': time_diff,
                                                  'max_sync_diff': self._max_sync_diff})
             if time_diff <= self._max_sync_diff:
                 return True
         except TonConnectionException as ex:
-            log.error("Failed to connect to TON Validator: {}".format(ex))
+            log.exception("Failed to connect to TON Validator: {}".format(ex))
         except Exception as ex:
-            log.error("Failed to get time-diff stats: {}".format(ex))
+            log.exception("Failed to get time-diff stats: {}".format(ex))
         return False
 
     def _send_telemetry(self, data_type, data: dict):
@@ -209,7 +209,7 @@ class ElectionsRoutine(object):
         :param election: Object describing election details
         :param elector_params: Object with elector parameters
         :param beneficiary_masterchain_adr: Address where rewards will land in masterchain (elector will pay here).
-            In case of DePool it's proxy, in case of direct participation it's validator wallet too.
+            In case of DePool it's proxy, in case of direct participation it's validator wallet.
         :param elector_adr:
             Address of contract that will perform election handling or comms (either DePool or Elector itself)
         :return:
@@ -218,35 +218,37 @@ class ElectionsRoutine(object):
         if not election.key:
             log.info("Generating keys...")
             need_election_prepare = True
-            election.key = self._vec.get_new_key()
-            election.adnl_key = self._vec.get_new_key()
+            election.key = self._validator_provider.get_new_key()
+            election.adnl_key = self._validator_provider.get_new_key()
         else:
             log.info("Using existing/provided keys for the election")
         log.info("Perm key hash: {}".format(election.key))
         log.info("ADNL key hash: {}".format(election.adnl_key))
-        election_stop_time = int(election.election_id) + 1000 + elector_params.elections_start_before + \
-                             elector_params.validators_elected_for + \
-                             elector_params.elections_end_before + \
-                             elector_params.stake_held_for
+        election_stop_time = int(election.election_id) + \
+            1000 + elector_params.elections_start_before + \
+            elector_params.validators_elected_for + \
+            elector_params.elections_end_before + \
+            elector_params.stake_held_for
         if need_election_prepare:
             log.info("Preparing election request...")
-            self._vec.prepare_election(election.key, election.adnl_key,
-                                       election_start=election.election_id,
-                                       election_stop=election_stop_time)
+            self._validator_provider.prepare_election(election.key, election.adnl_key,
+                                                      election_start=election.election_id,
+                                                      election_stop=election_stop_time)
+
         log.info("Generating validation request...")
-        election_req = self._fift_cli.generate_validation_req(beneficiary_masterchain_adr,
-                                                              election_start=election.election_id,
-                                                              key_adnl=election.adnl_key,
-                                                              max_factor=self._stake_max_factor)
+        election_req = self._validator_provider.generate_validation_request(beneficiary_masterchain_adr=beneficiary_masterchain_adr,
+                                                                            election_id=election.election_id,
+                                                                            adnl_key=election.adnl_key,
+                                                                            max_factor=self._stake_max_factor)
         # sign request
         log.info("Signing election request...")
-        election_req_signature, pub_key = self._vec.sign_request(election.key, election_req)
+        election_req_signature, pub_key = self._validator_provider.sign_request(election.key, election_req)
         log.info("Generating signed election request...")
-        election_signed = self._fift_cli.generate_validation_signed(beneficiary_masterchain_adr,
-                                                                    election.election_id, election.adnl_key,
-                                                                    public_key=pub_key,
-                                                                    signature=election_req_signature,
-                                                                    max_factor=self._stake_max_factor)
+        election_signed = self._validator_provider.generate_validation_signed(beneficiary_masterchain_adr,
+                                                                              election.election_id, election.adnl_key,
+                                                                              public_key=pub_key,
+                                                                              signature=election_req_signature,
+                                                                              max_factor=self._stake_max_factor)
 
         log.info("Submitting election transaction...")
         transaction = self._tonos_cli.submit_transaction(validator_addr,
@@ -310,8 +312,8 @@ class ElectionsRoutine(object):
                         validator_balance = validator_account.balance
                         log.info("Validator balance: {}".format(validator_balance))
                         # get address of elector contract
-                        elector_addr = self._lite_client.get_elector_address()
-                        election_ids = self._lite_client.get_election_ids(elector_addr)
+                        elector_addr = self._validator_provider.get_elector_address()
+                        election_ids = self._validator_provider.get_election_ids(elector_addr)
                         log.info("Elector address: {}".format(elector_addr))
                         log.info("Election ids: {}".format(election_ids))
                         election_status_telemetry_data = {'validator_address': validator_addr,
@@ -325,7 +327,8 @@ class ElectionsRoutine(object):
                             telemetry_data = {
                                 'election_id': active_election.election_id,
                                 'election_stake': active_election.election_stake,
-                                'election_state': active_election.get_state()
+                                'election_state': active_election.get_state(),
+                                'participating': False
                             }
                             active_election_stakes += active_election.election_stake
                             if str(active_election.election_id) not in election_ids and active_election.can_return():
@@ -333,7 +336,8 @@ class ElectionsRoutine(object):
                                 self._send_telemetry('finished_elections', telemetry_data)
                             else:
                                 log.info("Participating election: {}".format(active_election))
-                                self._send_telemetry('active_elections', telemetry_data)
+                                telemetry_data["participating"] = True
+                            self._send_telemetry('active_elections', telemetry_data)
                         if finished_elections:
                             log.info("Finished elections: {}".format(finished_elections))
                             finished_validator_elections = []
@@ -351,7 +355,7 @@ class ElectionsRoutine(object):
                                                                                                  election_ids))
                         else:
                             log.info("Getting elector params...")
-                            elector_params = self._lite_client.get_elector_params()
+                            elector_params = self._validator_provider.get_elector_params()
                             log.info("Current active elections: {}".format(election_ids))
                             new_elections = []  # type: List[Election]
                             for eid in election_ids:
@@ -366,10 +370,10 @@ class ElectionsRoutine(object):
                                     active_election.restake = False
                                     new_elections.append(active_election)
 
-                            participant_stakes = self._lite_client.get_current_participant_stakes(elector_addr)
+                            participant_stakes = self._validator_provider.get_current_participant_stakes(elector_addr)
                             participant_number = len(participant_stakes)
                             lowest_stake = min(participant_stakes) if participant_stakes else 0
-                            election_validator_params = self._lite_client.get_election_validator_params()
+                            election_validator_params = self._validator_provider.get_election_validator_params()
                             max_validators = election_validator_params.max_validators
                             valid_stakes = sorted(participant_stakes, reverse=True)[:max_validators]
                             lowest_valid_stake = min(valid_stakes) if valid_stakes else 0
@@ -389,7 +393,7 @@ class ElectionsRoutine(object):
                                 if self._election_mode == ElectionMode.VALIDATOR:
                                     log.info("Joining in validator mode")
                                     log.info("Getting min stake...")
-                                    stake_params = self._lite_client.get_stake_params()
+                                    stake_params = self._validator_provider.get_stake_params()
                                     stake_per_election = (validator_balance + recovered_stake + active_election_stakes) / len(new_elections)
                                     balance_left = validator_balance
                                     election_stake = self._compute_stake(stake_per_election)
@@ -425,7 +429,12 @@ class ElectionsRoutine(object):
                                         log.info(f"Participation enabled: {depool_data.enable_elections}")
                                         send_tick_tock = False
                                         depool_healthy = True
-                                        log.info("Checking DePool: {}".format(depool_data))
+                                        log.info("DePool: {}".format(depool_data.depool_address))
+                                        if not depool_data.proxy_addresses:
+                                            log.info("Proxy addresses not specified, trying to fetch them")
+                                            depool_info = self._tonos_cli.depool_info(depool_data.depool_address,
+                                                                                      depool_data.abi_url)
+                                            depool_data.proxy_addresses = depool_info.proxies
                                         proxy_addresses = depool_data.proxy_addresses
                                         depool_addr = depool_data.depool_address
                                         log.info("Proxy addresses: {}, for: {}".format(proxy_addresses, depool_addr))
@@ -532,10 +541,10 @@ class ElectionsRoutine(object):
             try:
                 log.info("Requesting bounty from: {}".format(finish_elector_addr))
                 # no election happening
-                recover_amounts = self._lite_client.compute_returned_stakes(finish_elector_addr, validator_addr)
+                recover_amounts = self._validator_provider.compute_returned_stakes(finish_elector_addr, validator_addr)
                 if recover_amounts:
                     log.info("Recovering: {}".format(recover_amounts))
-                    recover_req = self._fift_cli.generate_recover_stake_req()
+                    recover_req = self._validator_provider.generate_recover_stake_req()
                     transaction = self._tonos_cli.submit_transaction(validator_addr,
                                                                      TonAddress.set_address_prefix(finish_elector_addr,
                                                                                                    TonAddress.Type.MASTER_CHAIN),

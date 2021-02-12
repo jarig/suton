@@ -11,13 +11,12 @@ export LS_JAVA_OPTS="-Dls.cgroup.cpuacct.path.override=/ -Dls.cgroup.cpu.path.ov
 sudo chmod g+r -R $TON_LOG_DIR
 
 if [[ -d $TON_CONTROL_WORK_DIR/configs/logstash && -n "$(ls -A $TON_CONTROL_WORK_DIR/configs/logstash)" ]]; then
-  sudo cp -f $TON_CONTROL_WORK_DIR/configs/logstash/*.conf /usr/share/logstash/pipeline/ton_control/
-fi
-if [[ -d $TON_WORK_DIR/configs/logstash && -n "$(ls -A $TON_WORK_DIR/configs/logstash)" ]]; then
-  sudo cp -f $TON_WORK_DIR/configs/logstash/*.conf /usr/share/logstash/pipeline/ton_validator/
+  sudo ln -s $TON_CONTROL_WORK_DIR/configs/logstash/ton_control/*.conf /usr/share/logstash/pipeline/ton_control/
+  sudo ln -s $TON_CONTROL_WORK_DIR/configs/logstash/ton_validator/*.conf /usr/share/logstash/pipeline/ton_validator/
+  sudo ln -s $TON_CONTROL_WORK_DIR/configs/logstash/host/*.conf /usr/share/logstash/pipeline/host/
+  sudo chmod -R o+r /usr/share/logstash/pipeline/*
 fi
 sudo chown -R logstash:logstash /usr/share/logstash/pipeline/
-
 
 if [[ -z $1 ]] || [[ ${1:0:1} == '-' ]] ; then
   exec logstash "$@"

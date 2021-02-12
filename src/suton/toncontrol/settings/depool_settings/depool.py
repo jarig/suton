@@ -9,14 +9,16 @@ from toncommon.serialization.json import JsonAware
 class DePoolSettings(JsonAware):
     DESERIALIZE_VIA_CONSTRUCTOR = True
 
-    def __init__(self, depool_address: str, proxy_addresses: List[str], max_ticktock_period=3600,
+    def __init__(self, depool_address: str, proxy_addresses: List[str] = None, max_ticktock_period=3600,
                  prudent_election_settings: PrudentElectionSettings = None,
-                 replenish_settings: AutoReplenishSettings = None, enable_elections=True):
+                 replenish_settings: AutoReplenishSettings = None, abi_url: str = None, enable_elections=True):
+        assert proxy_addresses or abi_url, "Either proxy addresses or abi url need to be specified for depool settings"
         self.depool_address = depool_address
-        self.proxy_addresses = proxy_addresses
+        self.proxy_addresses = proxy_addresses if proxy_addresses else []
         self.max_ticktock_period = max_ticktock_period
         self.prudent_election_settings = prudent_election_settings
         self.replenish_settings = replenish_settings
+        self.abi_url = abi_url
         self.enable_elections = enable_elections
         self._last_ticktock = 0
 

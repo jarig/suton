@@ -17,13 +17,13 @@ class SensitiveFilter(logging.Filter):
             for key in record.args:
                 for secret in self._secrets:
                     if secret:
-                        record.args[key] = record.args[key].replace(str(secret), "***")
+                        record.args[key] = str(record.args[key]).replace(str(secret), "***")
         else:
             nargs = []
             for i in range(len(record.args)):
                 for secret in self._secrets:
                     if secret:
-                        nargs.append(record.args[i].replace(str(secret), "***"))
+                        nargs.append(str(record.args[i]).replace(str(secret), "***"))
             record.args = tuple(nargs)
         return True
 

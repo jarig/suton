@@ -2,31 +2,42 @@ version: "3.8"
 services:
   tonvalidator:
     image: tonvalidator:latest
-    restart: always
-    build: 
-      context: ./validator
+    build:
+      context: ./rustvalidator
       args:
-        HOST_TON_USER_ID: ${HOST_TON_USER_ID}
-        HOST_TON_GROUP_ID: ${HOST_TON_GROUP_ID}
-        TON_BUILD_SCRIPTS_URL: ${TON_BUILD_SCRIPTS_URL}
-        TON_BUILD_SCRIPTS_REV: ${TON_BUILD_SCRIPTS_REV}
+        TON_NODE_GITHUB_REPO: $RUST_TON_NODE_GITHUB_REPO
+        TON_NODE_GITHUB_COMMIT_ID: $RUST_TON_NODE_GITHUB_COMMIT_ID
+        TON_NODE_TOOLS_GITHUB_COMMIT_ID: $RUST_TON_NODE_TOOLS_GITHUB_COMMIT_ID
+        TONOS_CLI_GITHUB_COMMIT_ID: $RUST_TONOS_CLI_GITHUB_COMMIT_ID
+        HOST_TON_USER_ID: $HOST_TON_USER_ID
+        HOST_TON_GROUP_ID: $HOST_TON_GROUP_ID
+    hostname: tonvalidator
+    restart: unless-stopped
+    environment:
+      ADNL_PORT:
+      VALIDATOR_NAME:
+      NETWORK_TYPE:
+      CONFIGS_PATH:
+      TON_NODE_EXTRA_ARGS:
+      TON_ENV:
+      TON_VALIDATOR_CONFIG_URL:
+      HOST_TON_CONTROL_USER_ID:
+      HOST_TON_CONTROL_GROUP_ID:
     ports:
-      - "30310:30310"
-      - "30310:30310/udp"
-      - "127.0.0.1:3030:3030"
+      - "127.0.0.1:3031:3031"
+      - "30303:30303"
+      - "30303:30303/udp"
     volumes:
       - type: bind
         source: ${TON_WORK_DIR}
-        target: /var/ton-work-${TON_ENV}
+        target: /ton-node-work
         consistency: delegated
       - type: volume
-        source: validator-client-keys
-        target: /var/ton-client-keys-${TON_ENV}
-    environment:
-      - TON_ENV=${TON_ENV}
-      - TON_VALIDATOR_CONFIG_URL=${TON_VALIDATOR_CONFIG_URL}
-      - HOST_TON_CONTROL_USER_ID=${HOST_TON_CONTROL_USER_ID}  # validator will grant perms for client key to this uid
-      - HOST_TON_CONTROL_GROUP_ID=${HOST_TON_CONTROL_GROUP_ID}
+        source: rust_metrics
+        target: /tmp/metrics
+      - type: volume
+        source: validator-console-keys
+        target: /var/rton-console-keys-${TON_ENV}
   tonlogstash:
     image: tonlogstash:latest
     restart: on-failure
@@ -34,6 +45,8 @@ services:
       context: ./logstash
       args:
         TON_USER_GID: ${HOST_TON_GROUP_ID}
+    ports:
+      - "127.0.0.1:${LOGSTASH_HOST_DATA_INPUT_PORT}:${LOGSTASH_HOST_DATA_INPUT_PORT}"
     volumes:
       - type: bind
         source: ${TON_WORK_DIR}
@@ -47,6 +60,7 @@ services:
       - TON_CONTROL_WORK_DIR=/var/ton-control
       - TON_LOG_DIR=/var/ton-work/${TON_ENV}/log
       - TON_CONTROL_LOG_DIR=/var/ton-control/${TON_ENV}/log
+      - LOGSTASH_HOST_DATA_INPUT_PORT=${LOGSTASH_HOST_DATA_INPUT_PORT}
   toncontrol:
     image: toncontrol:latest
     restart: always
@@ -54,11 +68,11 @@ services:
       context: ..
       dockerfile: docker/toncontrol/Dockerfile
       args:
-        HOST_TON_CONTROL_USER_ID: ${HOST_TON_CONTROL_USER_ID}
-        HOST_TON_CONTROL_GROUP_ID: ${HOST_TON_CONTROL_GROUP_ID}
+        HOST_TON_CONTROL_USER_ID: $HOST_TON_CONTROL_USER_ID
+        HOST_TON_CONTROL_GROUP_ID: $HOST_TON_CONTROL_GROUP_ID
     volumes:
       - type: volume
-        source: validator-client-keys
+        source: validator-console-keys
         target: /var/ton-keys
       - type: volume
         source: ton-control-keys
@@ -75,7 +89,6 @@ services:
       - TON_CONTROL_QUEUE_NAME=${TON_CONTROL_QUEUE_NAME}
       - TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING=${TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING}
       - TON_CONTROL_ELECTION_MODE=${TON_CONTROL_ELECTION_MODE}
-      - TONOS_CLI_CONFIG_URL=${TONOS_CLI_CONFIG_URL}
       - TON_CONTROL_DEFAULT_STAKE=${TON_CONTROL_DEFAULT_STAKE}
       - TON_CONTROL_STAKE_MAX_FACTOR=${TON_CONTROL_STAKE_MAX_FACTOR}
       - TON_CONTROL_CLIENT_KEY_PATH=${TON_CONTROL_CLIENT_KEY_PATH}
@@ -84,4 +97,5 @@ services:
 
 volumes:
   ton-control-keys:
-  validator-client-keys: 
+  validator-console-keys:
+  rust_metrics:
