@@ -1,12 +1,12 @@
 import json
 import logging
 import re
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from toncommon.core import TonExec
 from toncommon.models.TonAddress import TonAddress
 from tonliteclient.exceptions.base import TonLiteClientException
-from tonliteclient.models.ElectionParams import ElectionParams, StakeParams, ElectionValidatorParams
+from toncommon.models.ElectionParams import ElectionParams, StakeParams, ElectionValidatorParams
 
 log = logging.getLogger("tonclient")
 
@@ -46,7 +46,7 @@ class TonLiteClient(TonExec):
                 data[name_val[0].strip()] = name_val[1].strip()
         return data
 
-    def get_elector_address(self):
+    def get_elector_address(self) -> Optional[str]:
         out = self._run_command("getconfig 1", timeout=10)
         # get address from the output
         pattern = re.compile(r".+elector_addr:x(.+)\)$")
@@ -125,7 +125,7 @@ class TonLiteClient(TonExec):
                 return [p_info[1] for p_info in participant_info]
         return []
 
-    def compute_returned_stakes(self, elector_addr, validator_addr) -> [str]:
+    def compute_returned_stakes(self, elector_addr, validator_addr) -> [int]:
         elector_addr = TonAddress.set_address_prefix(elector_addr, TonAddress.Type.MASTER_CHAIN)
         validator_addr = TonAddress.set_address_prefix(validator_addr, TonAddress.Type.HEX)
         out = self._run_command("runmethod {} compute_returned_stake {}".format(elector_addr, validator_addr))
@@ -134,5 +134,5 @@ class TonLiteClient(TonExec):
             m = pattern.match(line)
             if m:
                 retvals = m.group(1).strip().split(",")
-                return [val.strip() for val in retvals if val.strip() != "0"]
+                return [int(val.strip()) for val in retvals if val.strip() != "0"]
         return []

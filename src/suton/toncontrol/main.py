@@ -9,7 +9,11 @@ from logging.handlers import RotatingFileHandler
 # TODO: remove once tonlibs are moved away
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'tonlibs'))
 
-
+from routines.validator_providers.cpp_validator import CPPValidator
+from routines.validator_providers.rust_validator import RustValidator
+from routines.election_providers.depool_provider import DePoolElectionProvider
+from routines.election_providers.direct_provider import DirectElectionProvider
+from rustconsole.core import RustConsole
 from logstash.client import LogStashClient
 from routines.elections import ElectionsRoutine
 from routines.qcontroller import QueueRoutine
@@ -38,8 +42,6 @@ def main():
     parser.add_argument('--default_election_stake', dest='default_election_stake',
                         default=TonSettings.ELECTIONS_SETTINGS.TON_CONTROL_DEFAULT_STAKE,
                         help='Stake to make on elections, % or absolute value')
-    parser.add_argument('--election_mode', type=ElectionMode, dest='election_mode', choices=list(ElectionMode),
-                        default=TonSettings.ELECTIONS_SETTINGS.TON_CONTROL_ELECTION_MODE, help='Election mode')
     parser.add_argument('--stake_max_factor', dest='stake_max_factor',
                         default=TonSettings.ELECTIONS_SETTINGS.TON_CONTROL_STAKE_MAX_FACTOR,
                         help='Stake max-factor')
@@ -61,9 +63,6 @@ def main():
     parser.add_argument("--server_pub_key",
                         default='/var/ton-keys/server.pub',
                         help="Path to server public key")
-    parser.add_argument("--validator_engine_path", 
-                        default='/opt/ton/validator-engine-console/validator-engine-console', 
-                        help="Base path to TON validator-engine CLI")
     parser.add_argument("--validator_network_address",
                         default=TonSettings.TON_CONTROL_VALIDATOR_NETWORK_ADDR,
                         help="TON Validator network address, including port. Can contain Docker hostnames")
@@ -76,20 +75,19 @@ def main():
     parser.add_argument("--lite_server_pub_key",
                         default='/var/ton-keys/liteserver.pub',
                         help="Path to public-key that lite-client will be using")
-    parser.add_argument("--tonos_config_url",
-                        default=TonSettings.TONOS_CLI_CONFIG_URL,
-                        help="Hostname of ton environment.")
+    parser.add_argument("--tools_cwd_base",
+                        default='/opt/cwds',
+                        help="Path to base dir where tools can create own working dirs")
+    parser.add_argument("--rconsole_path",
+                        default='/opt/ton/tools/console',
+                        help="Path to Rust console executable")
     parser.add_argument("--tonos_cli_path",
-                        default='/opt/ton/utils/tonos-cli',
+                        default='/opt/ton/tools/tonos-cli',
                         help="Path to tonos-cli utility")
-    parser.add_argument("--tonos_cli_cwd", default='/opt/tonos_cwd',
-                        help="Address to use for lite-client, including port. Can contain Docker hostnames")
-    parser.add_argument("--tonos_cli_abi_path",
-                        default='/opt/configs/SafeMultisigWallet.abi.json',
-                        help="Path to ABI file")
-    parser.add_argument("--tonos_cli_tvc_path",
-                        default='/opt/configs/SafeMultisigWallet.tvc',
-                        help="Path to tvc file")
+    parser.add_argument("--tonos_cli_wallet_abi_url",
+                        help="URL to ABI file")
+    parser.add_argument("--tonos_cli_wallet_tvc_url",
+                        help="URL to tvc file")
     parser.add_argument("--fift_cli_path",
                         default='/opt/ton/crypto/fift',
                         help="Path to fift utility")
@@ -139,9 +137,6 @@ def main():
     if args.secret_manager_provider:
         ton_control_settings.TON_CONTROL_SECRET_MANAGER_PROVIDER = args.secret_manager_provider
 
-    if args.tonos_config_url:
-        ton_control_settings.TONOS_CLI_CONFIG_URL = args.tonos_config_url
-
     if args.lite_client_network_address:
         ton_control_settings.TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR = args.lite_client_network_address
 
@@ -169,36 +164,56 @@ def main():
                                                       args.keys_dir)
     # start registrator routine
     log.info("Initializing CLI wrappers...")
-    tonos_cli = TonosCli(cli_path=args.tonos_cli_path, cwd=args.tonos_cli_cwd,
+    tonos_cli = TonosCli(cli_path=args.tonos_cli_path, cwd=os.path.join(args.tools_cwd_base, "tonos"),
                          config_url=ton_control_settings.TONOS_CLI_CONFIG_URL,
-                         abi_path=args.tonos_cli_abi_path,
-                         tvc_path=args.tonos_cli_tvc_path)
-    fift_cli = FiftCli(cli_path=args.fift_cli_path, includes=args.fift_includes)
-    lite_client = TonLiteClient(client_path=args.lite_client_path,
-                                server_addr=ton_control_settings.TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR,
-                                client_pub_key=args.lite_server_pub_key)
-    validation_engine_console = TonValidatorEngineConsole(args.validator_engine_path, 
-                                                          client_key=ton_control_settings.TON_CONTROL_CLIENT_KEY_PATH,
-                                                          server_pub_key=args.server_pub_key,
-                                                          server_addr=ton_control_settings.TON_CONTROL_VALIDATOR_NETWORK_ADDR)
+                         wallet_abi_url=args.tonos_cli_wallet_abi_url,
+                         wallet_tvc_url=args.tonos_cli_wallet_tvc_url,
+                         ton_endpoints=ton_control_settings.TON_ENDPOINTS)
+
+    # create validator provider
+    if ton_control_settings.TON_VALIDATOR_TYPE == "rust":
+        # Rust Console
+        rconsole_cli = RustConsole(args.rconsole_path, cwd=os.path.join(args.tools_cwd_base, "rconsole"),
+                                   server_addr=args.validator_network_address,
+                                   server_pub_key_path=args.server_pub_key,
+                                   client_private_key_path=args.client_key)
+        validator_provider = RustValidator(rconsole_cli, tonos_cli,
+                                           elector_abi_url=ton_control_settings.ELECTOR_ABI_URL)
+    else:
+        fift_cli = FiftCli(cli_path=args.fift_cli_path, includes=args.fift_includes)
+        lite_client = TonLiteClient(client_path=args.lite_client_path,
+                                    server_addr=ton_control_settings.TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR,
+                                    client_pub_key=args.lite_server_pub_key)
+        validation_engine_console = TonValidatorEngineConsole(args.validator_engine_path,
+                                                              client_key=ton_control_settings.TON_CONTROL_CLIENT_KEY_PATH,
+                                                              server_pub_key=args.server_pub_key,
+                                                              server_addr=ton_control_settings.TON_CONTROL_VALIDATOR_NETWORK_ADDR)
+        validator_provider = CPPValidator(vec=validation_engine_console, fift_cli=fift_cli,
+                                          lite_client=lite_client)
+
+    # create appropriate election provider
+    if ton_control_settings.ELECTIONS_SETTINGS.TON_CONTROL_ELECTION_MODE == ElectionMode.DEPOOL:
+        election_provider = DePoolElectionProvider(validator_provider)
+    else:
+        election_provider = DirectElectionProvider(validator_provider)
 
     log.info("Initializing LogStash client...")
-    LogStashClient.configure_client("tonlogstash", 5959)
+    LogStashClient.configure_client("tonlogstash", 5959, {
+        "node_name": ton_control_settings.NODE_NAME
+    })
 
     log.info("Starting routines...")
     LogStashClient.start_client()
     # Validator
     elections_routine = ElectionsRoutine(work_dir=os.path.join(args.work_dir, "elections"),
-                                         validation_engine_console=validation_engine_console,
-                                         lite_client=lite_client,
                                          tonos_cli=tonos_cli,
-                                         fift_cli=fift_cli,
+                                         election_provider=election_provider,
+                                         validator_provider=validator_provider,
                                          secret_manager=secret_manager,
                                          max_sync_diff=ton_control_settings.VALIDATOR_MAX_SYNC_DIFF,
                                          election_settings=ton_control_settings.ELECTIONS_SETTINGS).start()
     # Queue
     QueueRoutine(elections_routine=elections_routine,
-                 validation_engine_console=validation_engine_console,
                  queue_provider=queue_provider).start()
     # Wallet Management
     log.info("All routines started")

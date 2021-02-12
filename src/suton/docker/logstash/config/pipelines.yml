@@ -4,3 +4,5 @@
 - pipeline.id: ton_control
   path.config: "/usr/share/logstash/pipeline/ton_control/"
   pipeline.workers: 1
+- pipeline.id: host
+  path.config: "/usr/share/logstash/pipeline/host/"

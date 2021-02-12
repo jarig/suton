@@ -25,21 +25,25 @@ if [[ -d "$control_key_pick_up_dir" && -n "$(ls -A $control_key_pick_up_dir)" ]]
   echo "Copying keys to toncontrol keys volume..."
   sudo cp -f $control_key_pick_up_dir/* "$keys_dir/"
   echo "Available keys:"
-  ls $keys_dir
+  ls "$keys_dir"
+  # remove them now from the host machine
+  sudo rm "$control_key_pick_up_dir/"* || true
 fi
 
 sudo chown toncontrol:toncontrol -R "$keys_dir"
 sudo mkdir -p "$work_dir/log"
 sudo chown toncontrol:toncontrol "$work_dir/log"
 
-sudo mkdir -p "$work_dir/tonos_cwd"
-sudo chown toncontrol:toncontrol -R "$work_dir/tonos_cwd"
+tool_cwds_root="/opt/cwds"
+sudo mkdir -p "$tool_cwds_root"
+sudo chown toncontrol:toncontrol -R "$tool_cwds_root"
+
 
 
 args="--work_dir=$work_dir --log_path=$work_dir/log --keys_dir=$keys_dir"
-args="$args --tonos_cli_cwd=$work_dir/tonos_cwd"
+args="$args --tools_cwd_base=$tool_cwds_root"
 args="$args --secret_manager_connection_env=TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING"
-args="$args --tonos_cli_abi_path=$TON_CONTROL_ABI_PATH --tonos_cli_tvc_path=$TON_CONTROL_TVC_PATH"
+args="$args --tonos_cli_wallet_abi_url=$TON_CONTROL_WALLET_ABI_URL --tonos_cli_wallet_tvc_url=$TON_CONTROL_WALLET_TVC_URL"
 
 add_argument () {
   name=$1
@@ -57,10 +61,10 @@ add_argument () {
   fi
 }
 
+add_argument "rconsole_path" $TON_RCONSOLE_PATH
 add_argument "default_election_stake" $TON_CONTROL_DEFAULT_STAKE
 add_argument "stake_max_factor" $TON_CONTROL_STAKE_MAX_FACTOR
 add_argument "fift_includes" $FIFT_INCLUDES
-add_argument "tonos_config_url" $TONOS_CLI_CONFIG_URL
 add_argument "queue_name" $TON_CONTROL_QUEUE_NAME
 add_argument "queue_provider" $TON_CONTROL_QUEUE_PROVIDER_IMPORT_PATH
 add_argument "secret_manager_provider" $TON_CONTROL_SECRET_MANAGER_IMPORT_PATH
@@ -69,7 +73,6 @@ add_argument "lite_client_network_address" $TON_CONTROL_VALIDATOR_LITE_CLIENT_AD
 add_argument "client_key" $TON_CONTROL_CLIENT_KEY_PATH
 add_argument "server_pub_key" $TON_CONTROL_SERVER_PUB_KEY_PATH
 add_argument "lite_server_pub_key" $TON_CONTROL_LITE_SERVER_PUB_KEY_PATH
-add_argument "election_mode" $TON_CONTROL_ELECTION_MODE
 
 echo "./main.py $args"
 python3.7 ./main.py $args

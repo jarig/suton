@@ -3,6 +3,7 @@ import logging
 import socket
 import threading
 from queue import Queue, Empty
+from typing import Optional
 
 logger = logging.getLogger('logstash_client')
 
@@ -13,14 +14,17 @@ class LogStashClient(object):
     """
     _instance = None
 
-    def __init__(self, hostname, port):
+    def __init__(self, hostname, port, pre_conf_data: Optional[dict] = None):
         self._hostname = hostname
         self._port = port
         self._queue = Queue()
         self._max_batch = 10
+        self._pre_conf_data = pre_conf_data
 
     def send_data(self, module, data: dict):
         data['module'] = module
+        if self._pre_conf_data:
+            data.update(self._pre_conf_data)
         self._queue.put(data, block=False)
 
     def _process_data(self):
@@ -56,8 +60,8 @@ class LogStashClient(object):
                 logger.exception("Failed to send data to logstash: {}".format(exc))
 
     @staticmethod
-    def configure_client(hostname, port):
-        LogStashClient._instance = LogStashClient(hostname, port)
+    def configure_client(hostname, port, pre_conf_data=None):
+        LogStashClient._instance = LogStashClient(hostname, port, pre_conf_data=pre_conf_data)
 
     @staticmethod
     def start_client():

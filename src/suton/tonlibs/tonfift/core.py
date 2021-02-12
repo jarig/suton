@@ -43,7 +43,7 @@ class FiftCli(TonExec):
         with open(temp_path, "rb") as f:
             return base64.b64encode(f.read()).decode(), out
 
-    def generate_recover_stake_req(self):
+    def generate_recover_stake_req(self) -> str:
         boc64, _ = self.generate_boc('recover-stake.fif')
         return boc64
 

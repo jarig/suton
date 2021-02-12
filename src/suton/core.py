@@ -11,7 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'tonlibs'))
 
 from typing import List
 from suton.services import DockerService, TonControlService
-from settings.core import TonSettings
+from suton.toncontrol.settings.core import TonSettings
 
 
 class TonManage(object):
@@ -74,6 +74,7 @@ class TonManage(object):
             node_settings = self.get_node_settings(args.node)
         else:
             node_settings = self.get_node_settings()
+        node_settings.init()
         node_settings.validate()
         cenv = os.environ.copy()
         connection_string = node_settings.TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING
@@ -84,8 +85,10 @@ class TonManage(object):
             cenv['DOCKER_HOST'] = node_settings.DOCKER_HOST
         cenv['TON_WORK_DIR'] = node_settings.TON_WORK_DIR
 
-        cenv['TON_BUILD_SCRIPTS_URL'] = node_settings.TON_BUILD_SCRIPTS_URL
-        cenv['TON_BUILD_SCRIPTS_REV'] = node_settings.TON_BUILD_SCRIPTS_REV
+        cenv['RUST_TONOS_CLI_GITHUB_COMMIT_ID'] = node_settings.RUST_TONOS_CLI_GITHUB_COMMIT_ID
+        cenv['RUST_TON_NODE_TOOLS_GITHUB_COMMIT_ID'] = node_settings.RUST_TON_NODE_TOOLS_GITHUB_COMMIT_ID
+        cenv['RUST_TON_NODE_GITHUB_COMMIT_ID'] = node_settings.RUST_TON_NODE_GITHUB_COMMIT_ID
+        cenv['RUST_TON_NODE_GITHUB_REPO'] = node_settings.RUST_TON_NODE_GITHUB_REPO
 
         cenv['TON_CONTROL_WORK_DIR'] = node_settings.TON_CONTROL_WORK_DIR
         cenv['TON_CONTROL_SETTINGS'] = json.dumps(node_settings.to_json())
@@ -100,8 +103,6 @@ class TonManage(object):
             cenv['TON_CONTROL_DEFAULT_STAKE'] = node_settings.ELECTIONS_SETTINGS.TON_CONTROL_DEFAULT_STAKE
         if node_settings.ELECTIONS_SETTINGS.TON_CONTROL_STAKE_MAX_FACTOR:
             cenv['TON_CONTROL_STAKE_MAX_FACTOR'] = node_settings.ELECTIONS_SETTINGS.TON_CONTROL_STAKE_MAX_FACTOR
-        if node_settings.TONOS_CLI_CONFIG_URL:
-            cenv['TONOS_CLI_CONFIG_URL'] = node_settings.TONOS_CLI_CONFIG_URL
 
         if node_settings.TON_CONTROL_QUEUE_NAME:
             cenv['TON_CONTROL_QUEUE_NAME'] = node_settings.TON_CONTROL_QUEUE_NAME
@@ -115,7 +116,6 @@ class TonManage(object):
 
         if node_settings.TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR:
             cenv['TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR'] = node_settings.TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR
-
 
         if node_settings.ELECTIONS_SETTINGS.TON_CONTROL_ELECTION_MODE:
             cenv['TON_CONTROL_ELECTION_MODE'] = str(node_settings.ELECTIONS_SETTINGS.TON_CONTROL_ELECTION_MODE)

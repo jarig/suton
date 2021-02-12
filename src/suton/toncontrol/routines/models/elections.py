@@ -1,9 +1,9 @@
 import datetime
 import time
-from typing import Optional, List
+from typing import Optional
 from settings.elections import ElectionMode
 from toncommon.models.TonAddress import TonAddress
-from tonliteclient.models.ElectionParams import ElectionParams
+from toncommon.models.ElectionParams import ElectionParams
 
 
 class Election(object):
