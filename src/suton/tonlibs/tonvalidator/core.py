@@ -72,7 +72,7 @@ class TonValidatorEngineConsole(TonExec):
     def delete_key(self, key):
         ret, out = self._run_command(['delpermkey {}'.format(key)])
 
-    def prepare_election(self, election_key, key_adnl, election_start, election_stop):
+    def prepare_election(self, election_key, key_adnl, election_start, election_stop) -> str:
         commands = ['addpermkey {key} {election_start} {election_stop}',
                     'addtempkey {key} {key} {election_stop}',
                     'addadnl {key_adnl} 0',

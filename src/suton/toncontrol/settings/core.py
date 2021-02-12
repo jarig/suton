@@ -29,11 +29,14 @@ class TonSettings(BaseTonControlSettings):
 
     TON_VALIDATOR_CONFIG_URL = None  # optionally specify where from to take config
 
-    TON_CONTROL_VALIDATOR_NETWORK_ADDR = 'tonvalidator:3030'
+    TON_CONTROL_VALIDATOR_NETWORK_ADDR = 'tonvalidator:3031'
     TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR = 'tonvalidator:3031'
 
     TON_CONTROL_SECRET_MANAGER_PROVIDER = 'secrets.envprovider.core'
     TON_CONTROL_QUEUE_PROVIDER = 'mqueue.azureservicebus.core'
+
+    TON_VALIDATOR_TYPE = "cpp"
+    ELECTOR_ABI_URL = None  # required for Rust node
 
     ELECTIONS_SETTINGS: ElectionSettings = ElectionSettings()
     WALLET_MANAGEMENT_SETTINGS: WalletManagementSettings = WalletManagementSettings()

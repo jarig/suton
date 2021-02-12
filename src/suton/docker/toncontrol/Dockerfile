@@ -13,14 +13,7 @@ RUN apt-get update && \
 
 RUN python3.7 -m pip install --upgrade pip
 
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/build/lite-client /opt/ton/lite-client
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/build/validator-engine-console /opt/ton/validator-engine-console
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/build/utils /opt/ton/utils
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/build/crypto /opt/ton/crypto
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/crypto/fift/lib /opt/ton/fift-libs/libs
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/ton/crypto/smartcont /opt/ton/fift-libs/smartcont
-COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /opt/freeton/ton.dev/configs /opt/ton/configs
-
+COPY --chown=toncontrol:toncontrol --from=tonvalidator:latest /ton-node/tools /opt/ton/tools
 
 WORKDIR /tmp
 

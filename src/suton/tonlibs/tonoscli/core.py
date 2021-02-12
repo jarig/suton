@@ -7,12 +7,15 @@ from typing import List, Optional, Union
 from pip._vendor import requests
 from toncommon.contextmanager import secret_manager
 from toncommon.core import TonExec
+from toncommon.models.TonAddress import TonAddress
 from toncommon.models.TonCoin import TonCoin
 from toncommon.models.depool.DePoolElectionEvent import DePoolElectionEvent
 from toncommon.models.depool.DePoolEvent import DePoolEvent
 from toncommon.models.depool.DePoolLowBalanceEvent import DePoolLowBalanceEvent
 from toncommon.models.TonAccount import TonAccount
 from toncommon.models.TonTransaction import TonTransaction
+from toncommon.utils import HexUtils
+from tonliteclient.models.ElectionParams import ElectionValidatorParams, StakeParams, ElectionParams
 
 log = logging.getLogger("tonoscli")
 
@@ -72,6 +75,73 @@ class TonosCli(TonExec):
             return obj
         return None
 
+    def get_config(self, index: int) -> (str, Optional[dict]):
+        """ ex:
+            Config p17: {
+              "max_stake": "10000000000000000",
+              "max_stake_factor": 196608,
+              "min_stake": "10000000000000",
+              "min_total_stake": "100000000000000"
+            }
+        """
+        out = self._run_command('getconfig', [str(index)])
+        config_pattern = f"Config p{index}:"
+        payload = ""
+        payload_started = False
+        for line in out.splitlines():
+            if line.startswith(config_pattern):
+                payload_started = True
+                line = line.replace(config_pattern, "").strip()
+            if payload_started:
+                payload += line
+        if payload:
+            return json.loads(payload)
+        return None
+
+    def get_stake_params(self) -> StakeParams:
+        data = self.get_config(17)
+        return StakeParams(data["min_stake"], data["max_stake"])
+
+    def get_election_validator_params(self) -> (ElectionValidatorParams, None):
+        data = self.get_config(16)
+        if data and "max_validators" in data:
+            return ElectionValidatorParams(max_validators=data["max_validators"],
+                                           max_main_validators=data["max_main_validators"],
+                                           min_validators=data["min_validators"])
+        return None
+
+    def get_elector_params(self) -> (ElectionParams, None):
+        data = self.get_config(15)
+        if data:
+            return ElectionParams(validators_elected_for=data["validators_elected_for"],
+                                  elections_start_before=data["elections_start_before"],
+                                  elections_end_before=data["elections_end_before"],
+                                  stake_held_for=data["stake_held_for"])
+        return None
+
+    def get_elector_address(self) -> Optional[str]:
+        data = self.get_config(1)
+        if data:
+            return TonAddress.set_address_prefix(data.strip(), TonAddress.Type.MASTER_CHAIN)
+        return None
+
+    def compute_returned_stake(self, elector_addr: str, validator_wallet_addr: str, elector_abi_url: str):
+        # run ${ELECTOR_ADDR} compute_returned_stake "{\"wallet_addr\":\"${MSIG_ADDR_HEX}\"}" --abi ${CONFIGS_DIR}/Elector.abi.json
+        data = self.exec_command('run', elector_addr, 'compute_returned_stake',
+                                 {"wallet_addr": validator_wallet_addr},
+                                 abi_url=elector_abi_url)
+        if data:
+            return [HexUtils.hex_to_int(data.get("value0"))]
+        return []
+
+    def get_active_election_ids(self, elector_addr: str, elector_abi_url: str):
+        # $(${UTILS_DIR}/tonos-cli run ${ELECTOR_ADDR} active_election_id {} --abi ${CONFIGS_DIR}/Elector.abi.json
+        data = self.exec_command('run', elector_addr, 'active_election_id',
+                                 {}, abi_url=elector_abi_url)
+        if data:
+            return [str(HexUtils.hex_to_int(data.get("value0")))]
+        return []
+
     def get_account(self, address) -> TonAccount:
         out = self._run_command('account', [address])
         data = {}
@@ -88,13 +158,13 @@ class TonosCli(TonExec):
         return TonAccount(acc_type=data["acc_type"], balance=int(data.get("balance", 0)),
                           last_paid=int(data.get("last_paid")), data=data.get("data(boc)"))
 
-    def call_command(self, address: str, command: str, payload: dict,
+    def exec_command(self, command: str, address: str, method: str, payload: dict,
                      abi_url: str, private_key: str = None) -> Optional[dict]:
-        cmd = [address, command, str(json.dumps(payload)), "--abi", self._materialize_abi(abi_url)]
+        cmd = [address, method, str(json.dumps(payload)), "--abi", self._materialize_abi(abi_url)]
         with secret_manager(secrets=[private_key]):
             if private_key:
                 cmd.extend(['--sign', str(private_key)])
-            out = self._run_command('call', cmd)
+            out = self._run_command(command, cmd)
             data = self._parse_result(out)
             log.debug("Tonoscli call: {}".format(out))
         return data

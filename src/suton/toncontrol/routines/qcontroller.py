@@ -15,11 +15,9 @@ class QueueRoutine(object):
 
     def __init__(self,
                  elections_routine: ElectionsRoutine,
-                 validation_engine_console: TonValidatorEngineConsole,
                  queue_provider: TonControllQueueAbstract):
         self._elections_routine = elections_routine
         self._queue_provider = queue_provider
-        self._validation_engine_console = validation_engine_console
 
     def start(self):
         thread = threading.Thread(target=self._routine, daemon=True)

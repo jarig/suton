@@ -1,4 +1,5 @@
 import os
+import shutil
 
 import paramiko
 from suton.ssh_client import SutonSSHClient
@@ -24,14 +25,22 @@ class TonControlService(DockerService):
         self.configs_dir = configs_dir
         self.remote_work_dir = remote_work_dir
         self.host = host
-        self.ssh_client = SutonSSHClient(host)
 
     def _upload_confs(self, source, dest):
+        ssh_client = None
+        if self.host:
+            ssh_client = SutonSSHClient(self.host)
         for conf in os.listdir(source):
             print("Uploading to configuration folder '{}': {}".format(dest, conf))
             conf_path = os.path.join(source, conf)
             remote_dest_path = '{}/{}/{}/{}'.format(self.remote_work_dir, 'configs', dest, conf)
-            self.ssh_client.upload_file_via_ssh(conf_path, remote_dest_path)
+            if ssh_client:
+                ssh_client.upload_file_via_ssh(conf_path, remote_dest_path)
+            else:
+                abs_path = os.path.abspath(remote_dest_path)
+                os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+                # local machine, just copy
+                shutil.copy2(conf_path, abs_path)
 
     def prepare(self):
         logstash_folder = os.path.join(self.configs_dir, 'logstash')
