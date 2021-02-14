@@ -22,13 +22,20 @@ Status:
 # Usage
 
 ## Prerequisite
-- Generate secret seed for work-chain `-1` (validators) using `tonoscli` utility as described in the [Ton Dev doc](https://docs.ton.dev/86757ecb2/p/94921e-multisignature-wallet-management-in-tonos-cli) 
-- Install Python3 and Docker on your machine (no need to enable Hyper-V on windows, but requires docker CLI utilities, `docker-compose` in particular)
-- Install Docker-daemon on remote machine (validator), for example [Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
-- For setup phase make your server accessible via SSH by root via ssh-keys (or grant root perms for some account you are going to use).
+- Generate secret seed for if want to use direct-validation in work-chain (`-1:`) or base-chain one (`0:`) if via depool. 
+  Use `tonoscli` utility as described in the [Ton Dev doc](https://docs.ton.dev/86757ecb2/p/94921e-multisignature-wallet-management-in-tonos-cli) 
+- Install Python3.7 and Docker on your machine (no need to enable Hyper-V on windows if node located remotely, but requires docker CLI utilities, `docker-compose` in particular). 
+  If you will run docker containers locally, then you will need full Docker(with Hyper-V on windows).
+- *(if validator is remote)*
+  Install Docker-daemon on remote machine (validator), for example [Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
+- *(if validator is remote)*
+  For setup phase make your server accessible via SSH by root via ssh-keys (or grant root perms for some account you are going to use).
   Remove this ssh access once setup is finished (or revoke root perms for the account used).
   *Root access will be required by Docker, so that it would be able to connect to remote Docker daemon and build/run images.*
-- Prepare you validator machine which should have dedicated place for Ton work-dir (500GB-1TB SSD), and work-dir for ton-controller (no special requirements). 
+- Prepare you validator machine which should have dedicated place for Ton work-dir (500GB-1TB SSD), and work-dir for ton-controller (no special requirements).
+  *(if on NIX)* Grant owner permission for 2 work-folders you will dedicate for `ton-control` and for `ton-validator`.   
+  Default is `1001:1001` for validator and `1002:1002` for `toncontrol`. Ex:  
+  `$ chown 1001:1001 /data/ton-validator` 
 - Optional: generate RSA keys, place private key to `<ton-controller-work-dir/configs/keys>`. 
   Encrypt your wallet seed with public key and convert to base64 format, [details here](#seed-encryption).
 

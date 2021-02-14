@@ -4,6 +4,13 @@ services:
     image: tonvalidator:latest
     build:
       context: ./rustvalidator
+      args:
+        TON_NODE_GITHUB_REPO: $RUST_TON_NODE_GITHUB_REPO
+        TON_NODE_GITHUB_COMMIT_ID: $RUST_TON_NODE_GITHUB_COMMIT_ID
+        TON_NODE_TOOLS_GITHUB_COMMIT_ID: $RUST_TON_NODE_TOOLS_GITHUB_COMMIT_ID
+        TONOS_CLI_GITHUB_COMMIT_ID: $RUST_TONOS_CLI_GITHUB_COMMIT_ID
+        HOST_TON_USER_ID: $HOST_TON_USER_ID
+        HOST_TON_GROUP_ID: $HOST_TON_GROUP_ID
     hostname: tonvalidator
     #restart: unless-stopped
     environment:
@@ -14,6 +21,8 @@ services:
       TON_NODE_EXTRA_ARGS:
       TON_ENV:
       TON_VALIDATOR_CONFIG_URL:
+      HOST_TON_CONTROL_USER_ID:
+      HOST_TON_CONTROL_GROUP_ID:
     ports:
       - "127.0.0.1:3031:3031"
       - "30303:30303"
@@ -23,9 +32,9 @@ services:
         source: ${TON_WORK_DIR}
         target: /ton-node-${TON_ENV}
         consistency: delegated
-      #- type: bind
-      #  source: /tmp/metrics
-      #  target: /tmp/metrics
+      - type: bind
+        source: /tmp/metrics
+        target: /tmp/metrics
       - type: volume
         source: validator-console-keys
         target: /var/rton-console-keys-${TON_ENV}
@@ -56,8 +65,8 @@ services:
       context: ..
       dockerfile: docker/toncontrol/Dockerfile
       args:
-        HOST_TON_CONTROL_USER_ID: ${HOST_TON_CONTROL_USER_ID}
-        HOST_TON_CONTROL_GROUP_ID: ${HOST_TON_CONTROL_GROUP_ID}
+        HOST_TON_CONTROL_USER_ID: $HOST_TON_CONTROL_USER_ID
+        HOST_TON_CONTROL_GROUP_ID: $HOST_TON_CONTROL_GROUP_ID
     volumes:
       - type: volume
         source: validator-console-keys

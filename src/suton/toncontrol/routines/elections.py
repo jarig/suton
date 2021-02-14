@@ -421,6 +421,11 @@ class ElectionsRoutine(object):
                                         send_tick_tock = False
                                         depool_healthy = True
                                         log.info("Checking DePool: {}".format(depool_data))
+                                        if not depool_data.proxy_addresses:
+                                            log.info("Proxy addresses not specified, trying to fetch them")
+                                            depool_info = self._tonos_cli.depool_info(depool_data.depool_address,
+                                                                                      depool_data.abi_url)
+                                            depool_data.proxy_addresses = depool_info.proxies
                                         proxy_addresses = depool_data.proxy_addresses
                                         depool_addr = depool_data.depool_address
                                         log.info("Proxy addresses: {}, for: {}".format(proxy_addresses, depool_addr))

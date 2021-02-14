@@ -20,13 +20,21 @@ class RustConsole(TonExec):
         super().__init__(cli_path)
         self._cwd = cwd
         self._server_addr = server_addr
-        with open(server_pub_key_path) as f:
-            self._server_pub_key = f.read().strip()
-        with open(client_private_key_path) as f:
-            self._client_private_key = f.read().strip()
+        self._server_pub_key_path = server_pub_key_path
+        self._client_private_key_path = client_private_key_path
+        self._key_cache = {}
+
+    def _read_key(self, path):
+        mtime = os.stat(path).st_mtime
+        if path not in self._key_cache or self._key_cache[path][1] != mtime:
+            with open(path) as f:
+                self._key_cache[path] = (f.read().strip(), mtime)
+        return self._key_cache[path][0]
 
     def _get_exec_config(self, wallet_addr: str = DUMMY_WALLET_ADDR, max_factor: float = 2.7):
-        config_key = f'{wallet_addr}.{self._server_pub_key}.{self._client_private_key}.{self._server_addr}'
+        server_pub_key = self._read_key(self._server_pub_key_path)
+        client_priv_key = self._read_key(self._client_private_key_path)
+        config_key = f'{wallet_addr}.{server_pub_key}.{client_priv_key}.{self._server_addr}'
         config_path = os.path.join(self._cwd, f"conf_{hashlib.md5(config_key.encode()).hexdigest()}")
         if not os.path.exists(self._cwd):
             os.makedirs(self._cwd, exist_ok=True)
@@ -39,11 +47,11 @@ class RustConsole(TonExec):
                         "server_address": f"{socket.gethostbyname(self._server_addr.split(':')[0])}:{':'.join(self._server_addr.split(':')[1:])}",
                         "server_key": {
                             "type_id": 1209251014,
-                            "pub_key": self._server_pub_key
+                            "pub_key": server_pub_key
                         },
                         "client_key": {
                             "type_id": 1209251014,
-                            "pvt_key": self._client_private_key
+                            "pvt_key": client_priv_key
                         }
                     },
                     "wallet_id": wallet_addr,

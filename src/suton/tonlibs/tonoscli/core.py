@@ -11,6 +11,7 @@ from toncommon.models.TonAddress import TonAddress
 from toncommon.models.TonCoin import TonCoin
 from toncommon.models.depool.DePoolElectionEvent import DePoolElectionEvent
 from toncommon.models.depool.DePoolEvent import DePoolEvent
+from toncommon.models.depool.DePoolInfo import DePoolInfo
 from toncommon.models.depool.DePoolLowBalanceEvent import DePoolLowBalanceEvent
 from toncommon.models.TonAccount import TonAccount
 from toncommon.models.TonTransaction import TonTransaction
@@ -243,11 +244,11 @@ class TonosCli(TonExec):
 
         return events
 
-    def terminate_depool(self, address, private_key: str):
+    def terminate_depool(self, address, private_key: str, abi_url: str):
         with secret_manager(secrets=[private_key]):
             transaction_payload = json.dumps({})
             out = self._run_command('call', [address, "terminator", transaction_payload,
-                                    "--abi", self._abi_path, "--sign", str(private_key)])
+                                    "--abi", self._materialize_abi(abi_url), "--sign", str(private_key)])
             log.debug("Tonoscli: {}".format(out))
 
     def depool_ticktock(self, depool_address: str, wallet_address: str, private_key: str,
@@ -259,4 +260,12 @@ class TonosCli(TonExec):
             data = self._parse_result(out)
             if custodian_keys:
                 self.confirm_transaction(wallet_address, transaction_id=data.get("transId"), private_keys=custodian_keys)
+
+    def depool_info(self, depool_address: str, abi_url: str) -> DePoolInfo:
+        # tonos-cli run 0:5e76094228c2cbc38b16e69507cfe7e0592b5ef67b1f3e3c11a0d3317f9532fa getDePoolInfo {} --abi pool_01.02.21/DePool.abi.json
+        data = self.exec_command('run', depool_address, 'getDePoolInfo', {}, abi_url=abi_url)
+        return DePoolInfo(pool_closed=data["poolClosed"],
+                          proxies=data["proxies"],
+                          validator_wallet=data["validatorWallet"],
+                          participant_reward_fraction=data["participantRewardFraction"])
 

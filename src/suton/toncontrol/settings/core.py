@@ -13,6 +13,11 @@ class TonSettings(BaseTonControlSettings):
     TON_BUILD_SCRIPTS_URL = "https://github.com/tonlabs/main.ton.dev"
     TON_BUILD_SCRIPTS_REV = "master"
 
+    RUST_TON_NODE_GITHUB_REPO = "https://github.com/tonlabs/ton-labs-node.git"
+    RUST_TONOS_CLI_GITHUB_COMMIT_ID = "49e78c7c616b693b3ee06b62bb5bc136258c761b"
+    RUST_TON_NODE_TOOLS_GITHUB_COMMIT_ID = "34f25ca7f11df2a27b801dc64af4d2433949e3ca"
+    RUST_TON_NODE_GITHUB_COMMIT_ID = "dc1a9641af63de7df2b4b45de0e2e2a76063be4a"
+
     # Intended to be overriden and values set to appropriate values
     # Note: do not commit sensitive data, and instead use Python to derive them in run-time from secure places
     NODE_NAME = 'ton-validator-0'

@@ -42,14 +42,14 @@ RUN curl https://packages.confluent.io/deb/5.5/archive.key | apt-key add;\
 RUN mkdir -p /opt/freeton/build
 WORKDIR /opt/freeton/build
 
-RUN git clone --recursive --depth 1 "$TON_NODE_GITHUB_REPO" --depth 1 ton-node
-RUN cd ton-node && git checkout "$TON_NODE_GITHUB_COMMIT_ID"
+RUN git clone --recursive "$TON_NODE_GITHUB_REPO" ton-node
+RUN cd ton-node && git checkout --recurse-submodules "$TON_NODE_GITHUB_COMMIT_ID" && git log -1
 
-RUN git clone --recursive --depth 1 "$TON_NODE_TOOLS_GITHUB_REPO" ton-labs-node-tools
-RUN cd "ton-labs-node-tools" && git checkout "$TON_NODE_TOOLS_GITHUB_COMMIT_ID"
+RUN git clone --recursive "$TON_NODE_TOOLS_GITHUB_REPO" ton-labs-node-tools
+RUN cd "ton-labs-node-tools" && git checkout --recurse-submodules "$TON_NODE_TOOLS_GITHUB_COMMIT_ID" && git log -1
 
-RUN git clone --recursive --depth 1 "$TONOS_CLI_GITHUB_REPO" tonos-cli
-RUN cd "tonos-cli" && git checkout "$TONOS_CLI_GITHUB_COMMIT_ID"
+RUN git clone --recursive "$TONOS_CLI_GITHUB_REPO" tonos-cli
+RUN cd "tonos-cli" && git checkout --recurse-submodules "$TONOS_CLI_GITHUB_COMMIT_ID" && git log -1
 
 
 # Get Rust
@@ -68,8 +68,8 @@ RUN cargo update && cargo build --release
 # Execute
 FROM ubuntu:18.04
 
-ARG HOST_USER_UID=1000
-ARG HOST_USER_GID=1000
+ARG HOST_TON_USER_ID=1000
+ARG HOST_TON_GROUP_ID=1000
 
 RUN apt-get update && apt-get install -y curl gnupg2
 RUN curl https://packages.confluent.io/deb/5.5/archive.key | apt-key add
@@ -92,8 +92,8 @@ RUN apt-get update && apt-get install -y \
     wget \
     sudo
 
-RUN groupadd --gid "$HOST_USER_GID" ton \
-    && useradd --uid "$HOST_USER_UID" --gid "$HOST_USER_GID" --create-home --shell /bin/bash ton && \
+RUN groupadd --gid "$HOST_TON_GROUP_ID" ton \
+    && useradd --uid "$HOST_TON_USER_ID" --gid "$HOST_TON_USER_ID" --create-home --shell /bin/bash ton && \
     echo "ton ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
 	mkdir /opt/freeton/ && \
 	chown ton:ton /opt/freeton/

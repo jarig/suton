@@ -11,7 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'tonlibs'))
 
 from typing import List
 from suton.services import DockerService, TonControlService
-from settings.core import TonSettings
+from suton.toncontrol.settings.core import TonSettings
 
 
 class TonManage(object):
@@ -86,6 +86,11 @@ class TonManage(object):
 
         cenv['TON_BUILD_SCRIPTS_URL'] = node_settings.TON_BUILD_SCRIPTS_URL
         cenv['TON_BUILD_SCRIPTS_REV'] = node_settings.TON_BUILD_SCRIPTS_REV
+
+        cenv['RUST_TONOS_CLI_GITHUB_COMMIT_ID'] = node_settings.RUST_TONOS_CLI_GITHUB_COMMIT_ID
+        cenv['RUST_TON_NODE_TOOLS_GITHUB_COMMIT_ID'] = node_settings.RUST_TON_NODE_TOOLS_GITHUB_COMMIT_ID
+        cenv['RUST_TON_NODE_GITHUB_COMMIT_ID'] = node_settings.RUST_TON_NODE_GITHUB_COMMIT_ID
+        cenv['RUST_TON_NODE_GITHUB_REPO'] = node_settings.RUST_TON_NODE_GITHUB_REPO
 
         cenv['TON_CONTROL_WORK_DIR'] = node_settings.TON_CONTROL_WORK_DIR
         cenv['TON_CONTROL_SETTINGS'] = json.dumps(node_settings.to_json())
