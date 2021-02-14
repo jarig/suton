@@ -10,6 +10,7 @@ ARG TON_NODE_TOOLS_GITHUB_COMMIT_ID=master
 ARG TONOS_CLI_GITHUB_REPO=https://github.com/tonlabs/tonos-cli.git
 ARG TONOS_CLI_GITHUB_COMMIT_ID=master
 
+ARG RUST_VERSION=1.50.0
 
 # Compile
 ENV TZ=Etc/UTC
@@ -54,7 +55,7 @@ RUN cd "tonos-cli" && git checkout --recurse-submodules "$TONOS_CLI_GITHUB_COMMI
 
 # Get Rust
 COPY rust_install.sh /tmp/rust_install.sh
-RUN bash -c "/tmp/rust_install.sh 1.45.2"
+RUN bash -c "/tmp/rust_install.sh ${RUST_VERSION}"
 
 WORKDIR /opt/freeton/build/ton-node
 RUN cargo update && cargo build --release --features "metrics"
@@ -70,6 +71,7 @@ FROM ubuntu:18.04
 
 ARG HOST_TON_USER_ID=1000
 ARG HOST_TON_GROUP_ID=1000
+ARG RUST_VERSION=1.50.0
 
 RUN apt-get update && apt-get install -y curl gnupg2
 RUN curl https://packages.confluent.io/deb/5.5/archive.key | apt-key add
@@ -100,7 +102,7 @@ RUN groupadd --gid "$HOST_TON_GROUP_ID" ton \
 
 # Get Rust
 COPY rust_install.sh /tmp/rust_install.sh
-RUN bash -c "/tmp/rust_install.sh 1.45.2"
+RUN bash -c "/tmp/rust_install.sh ${RUST_VERSION}"
 
 RUN mkdir -p /ton-node
 RUN chown ton:ton /ton-node

@@ -259,4 +259,7 @@ ensure() {
 }
 
 
-install "$@"
+# install "$@"
+curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none -y
+source ~/.cargo/env
+rustup toolchain install  "$@"

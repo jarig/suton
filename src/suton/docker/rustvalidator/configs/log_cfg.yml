@@ -28,7 +28,7 @@ appenders:
       kind: compound
       trigger:
         kind: size
-        limit: 50 gb
+        limit: 5 gb
       roller:
         kind: fixed_window
         pattern: 'logs/output_{}.log'

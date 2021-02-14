@@ -5,6 +5,7 @@ services:
     build:
       context: ./rustvalidator
       args:
+        RUST_VERSION: $RUST_VERSION
         TON_NODE_GITHUB_REPO: $RUST_TON_NODE_GITHUB_REPO
         TON_NODE_GITHUB_COMMIT_ID: $RUST_TON_NODE_GITHUB_COMMIT_ID
         TON_NODE_TOOLS_GITHUB_COMMIT_ID: $RUST_TON_NODE_TOOLS_GITHUB_COMMIT_ID
@@ -32,8 +33,8 @@ services:
         source: ${TON_WORK_DIR}
         target: /ton-node-${TON_ENV}
         consistency: delegated
-      - type: bind
-        source: /tmp/metrics
+      - type: volume
+        source: rust_metrics
         target: /tmp/metrics
       - type: volume
         source: validator-console-keys
@@ -96,3 +97,4 @@ services:
 volumes:
   ton-control-keys:
   validator-console-keys:
+  rust_metrics:
