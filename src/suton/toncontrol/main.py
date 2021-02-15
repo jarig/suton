@@ -205,7 +205,9 @@ def main():
         election_provider = DirectElectionProvider(validator_provider)
 
     log.info("Initializing LogStash client...")
-    LogStashClient.configure_client("tonlogstash", 5959)
+    LogStashClient.configure_client("tonlogstash", 5959, {
+        "node_name": ton_control_settings.NODE_NAME
+    })
 
     log.info("Starting routines...")
     LogStashClient.start_client()

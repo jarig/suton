@@ -31,7 +31,7 @@ services:
     volumes:
       - type: bind
         source: ${TON_WORK_DIR}
-        target: /ton-node-${TON_ENV}
+        target: /ton-node-work
         consistency: delegated
       - type: volume
         source: rust_metrics

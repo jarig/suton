@@ -14,7 +14,7 @@ class DePoolSettings(JsonAware):
                  replenish_settings: AutoReplenishSettings = None, abi_url: str = None):
         assert proxy_addresses or abi_url, "Either proxy addresses or abi url need to be specified for depool settings"
         self.depool_address = depool_address
-        self.proxy_addresses = proxy_addresses
+        self.proxy_addresses = proxy_addresses if proxy_addresses else []
         self.max_ticktock_period = max_ticktock_period
         self.prudent_election_settings = prudent_election_settings
         self.replenish_settings = replenish_settings

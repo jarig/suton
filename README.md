@@ -11,6 +11,7 @@ Status:
 - :heavy_check_mark: TonControl automates participation in elections
 - :heavy_check_mark: TonControl reports telemetry via LogStash using TCP protocol
 - :heavy_check_mark: TonControl automates participation in DePool elections
+- :heavy_check_mark: Support of validator node on Rust
 - **=== We are here ===**
 - :clock1: LogStash publishing parsed tonvalidator logs
 - :clock1: Extendable TonControl with own secret-managers

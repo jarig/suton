@@ -10,9 +10,8 @@ export STATSD_PORT=9125
 RNODE_CONSOLE_SERVER_PORT="3031"
 NODE_EXEC="${TON_NODE_ROOT_DIR}/ton_node_no_kafka"
 
-
-TON_NODE_ENV_ROOT_DIR="/ton-node-${TON_ENV}"
-#TON_NODE_ENV_CONFIGS_DIR="${TON_NODE_ENV_ROOT_DIR}/configs"
+# /ton-node is mount point. Then we create subfolder, so in case of env-switch container shouldn't be re-created
+TON_NODE_ENV_ROOT_DIR="/ton-node-work/$TON_ENV"
 TON_NODE_ENV_TOOLS_DIR="${TON_NODE_ENV_ROOT_DIR}/tools"
 TON_NODE_ENV_DB_DIR="${TON_NODE_ENV_ROOT_DIR}/node_db"
 TON_NODE_ENV_LOGS_DIR="${TON_NODE_ENV_ROOT_DIR}/logs"
@@ -28,10 +27,10 @@ echo "INFO: CONFIGS_PATH = ${CONFIGS_PATH}"
 
 
 echo "INFO: Starting TON node..."
-# ! -f "$TON_CONSOLE_KEYS_ROOT/client" || ! -d "$TON_NODE_ENV_DB_DIR"
-if [[ 1 == 1 ]]; then
+#
+if [[ ! -f "$TON_CONSOLE_KEYS_ROOT/client" || ! -d "$TON_NODE_ENV_DB_DIR/index_db" ]]; then
+  mkdir -p "$TON_NODE_ENV_ROOT_DIR"
   mkdir -p "$TON_CONSOLE_KEYS_ROOT"
-  # mkdir -p "$TON_NODE_ENV_CONFIGS_DIR"
   mkdir -p "$TON_NODE_ENV_LOGS_DIR"
   mkdir -p "$TON_NODE_ENV_TOOLS_DIR"
   echo "INFO: Initializing TON work folder for '$TON_ENV' environment"
