@@ -13,7 +13,7 @@ services:
         HOST_TON_USER_ID: $HOST_TON_USER_ID
         HOST_TON_GROUP_ID: $HOST_TON_GROUP_ID
     hostname: tonvalidator
-    #restart: unless-stopped
+    restart: unless-stopped
     environment:
       ADNL_PORT:
       VALIDATOR_NAME:

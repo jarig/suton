@@ -20,6 +20,18 @@ Status:
 - :clock1: TonLibs are moved to own project and re-usable for other needs
 - :clock1: Extendable TonControl with own service-bus message processors
 
+# Architecture
+
+![Alt text](docs/imgs/arch.jpeg?raw=true "Architecture overview")
+
+Notes:
+- Validator node doesn’t have any extra ports exposed
+- Every deployment can be scaled independently and whenever is required
+- Very flexible in controlling costs - Validator, Controller and Logstash are deployed via Docker (backed-up with docker-compose) either to bare-metal machine or VM.
+  At the same time monitoring can be either custom solution or one of SaaS solutions with pay-as-you-go subscriptions. The same applies for message-queue (either custom deployment or SaaS).
+- Pub/Sub layer provides good abstraction and allows to inject many type of notifications and ways to control validator(s), including safe for the validator web interfaces.
+- It is easy to integrate any kind of alerting and automatic response to those alerts.
+
 # Usage
 
 ## Prerequisite
@@ -40,7 +52,12 @@ Status:
 - Optional: generate RSA keys, place private key to `<ton-controller-work-dir/configs/keys>`. 
   Encrypt your wallet seed with public key and convert to base64 format, [details here](#seed-encryption).
 
-Create following project structure:
+## Workspace Setup
+
+Take example project as a base:  
+https://github.com/jarig/suton-workspace
+
+or start your own from scratch, create following project structure:
 ```text
 node-1/
       configs/        (optional)
@@ -65,6 +82,10 @@ import os
 class NodeSettings(TonSettings):
     # where to connect to
     DOCKER_HOST = "ssh://root@<validator machine IP>"
+    
+    # any name that will help you to identify the node in the telemetry later on
+    NODE_NAME = "my-node"
+
     # test or main
     TON_ENV = "net.ton.dev"
     # work-dir on HOST machine (where db, logs and configs will be)
@@ -93,7 +114,7 @@ $ chown 1001:1001 /path/to/ton-work-dir
 $ chown 1002:1002 /path/to/ton-control-dir
 ```
 
-Create in your local setup `requirements.txt` with
+Create in the your workspace root `requirements.txt` with contents
 ```requirements.txt
 git+git://github.com/jarig/suton@master#egg=suton
 ```
@@ -109,19 +130,6 @@ Then run:
    `$ python manage.py --node=node-1 run --build --service toncontrol`
    
    `$ python manage.py --node=node-1 run --build --service tonlogstash`
-
-
-# Architecture
-
-![Alt text](docs/imgs/arch.jpeg?raw=true "Architecture overview")
-
-Notes:
-- Validator node doesn’t have any extra ports exposed
-- Every deployment can be scaled independently and whenever is required
-- Very flexible in controlling costs - Validator, Controller and Logstash are deployed via Docker (backed-up with docker-compose) either to bare-metal machine or VM.
-  At the same time monitoring can be either custom solution or one of SaaS solutions with pay-as-you-go subscriptions. The same applies for message-queue (either custom deployment or SaaS).
-- Pub/Sub layer provides good abstraction and allows to inject many type of notifications and ways to control validator(s), including safe for the validator web interfaces.
-- It is easy to integrate any kind of alerting and automatic response to those alerts.
 
 
 # Setup and Configuration

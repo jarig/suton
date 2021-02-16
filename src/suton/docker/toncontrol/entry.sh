@@ -25,7 +25,9 @@ if [[ -d "$control_key_pick_up_dir" && -n "$(ls -A $control_key_pick_up_dir)" ]]
   echo "Copying keys to toncontrol keys volume..."
   sudo cp -f $control_key_pick_up_dir/* "$keys_dir/"
   echo "Available keys:"
-  ls $keys_dir
+  ls "$keys_dir"
+  # remove them now from the host machine
+  sudo rm "$control_key_pick_up_dir/"* || true
 fi
 
 sudo chown toncontrol:toncontrol -R "$keys_dir"
