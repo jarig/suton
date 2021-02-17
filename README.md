@@ -22,7 +22,7 @@ Status:
 
 # Architecture
 
-![Alt text](docs/imgs/arch.jpeg?raw=true "Architecture overview")
+![Alt text](docs/imgs/suton.png?raw=true "Architecture overview")
 
 Notes:
 - Validator node doesn’t have any extra ports exposed
@@ -284,11 +284,10 @@ class NodeSettings(TonSettings):
 
 ### Prudent Election Settings
 
-Participation in election is alike with a game, sometimes you can win or loose, depending on your competitors and situation 
-on among current participants. 
-If a stake you make is too low and you are not getting into minimal number of validators 
+Participation in election is like a game, sometimes you can win or loose, outcome depends from your competitors and your actions. 
+If a stake you make is too low, then you are not getting into minimal number of validators 
 (so TOP N validators made higher stake than you, where N is max allowed number of validators), then you are kicked out and TONs you payed for election requests are gone.
-So, it's important to play this game right and to make it easier SuTON provides extra settings - `PrudentSettings` that will help you to win this game.
+So, it's important to play this game right. To make it easier SuTON provides extra settings - `PrudentSettings` that will help you to win this game.
 
 Example with the DePool mode:
 ```python
@@ -306,18 +305,18 @@ class DepoolElectionSettings(ElectionSettings):
                                                                  join_threshold=1))
     ]
 ```  
-You can define `PrudentElectionSettings` either to DePoolSettings (if you are using DePools) or in `ElectionSettings.PRUDENT_ELECTION_SETTINGS` if participating directly.
+You can define `PrudentElectionSettings` either in DePoolSettings (if you are using DePools) or in `ElectionSettings.PRUDENT_ELECTION_SETTINGS` if participating directly.
 
 Where
 
-`election_end_join_offset` - Defines time offset when to join elections before election end.
+`election_end_join_offset` - Defines time offset when decision to join elections to be made, relative to election-end time.
 So for example, if you define 600 - then stake will be made in 10 or less minutes before election ends. Defined in seconds.
 
-`join_threshold` - Percentage that defines election join condition, based on the current number of stakes
-their min_value and stake you can/want to make. Threshold = `participants_with_lower_than_your_stake / first_N_participants`.
+`join_threshold` - Percentage that defines election join condition based on the current number of stakes
+their `min_value` and stake you can/want to make. Threshold computed as = `participants_with_lower_than_your_stake / first_N_participants`.
 So for example, if you define 10, then elections will be taken if 10% of valid participants (who potentially can join) 
-has lower stake than yours at a moment in time when election join attempt is made (which regulated by `election_end_join_offset` param).
-
+has lower stake than yours by the time when election join attempt is made (which regulated by `election_end_join_offset` param).
+ 
 
 ## LogStash Monitoring
 
