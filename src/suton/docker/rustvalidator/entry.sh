@@ -8,14 +8,15 @@ export TON_NODE_LOGS_DIR="${TON_NODE_ROOT_DIR}/logs"
 export STATSD_DOMAIN=localhost:
 export STATSD_PORT=9125
 RNODE_CONSOLE_SERVER_PORT="3031"
-NODE_EXEC="${TON_NODE_ROOT_DIR}/ton_node_no_kafka"
+NODE_EXEC_NAME="ton_node_no_kafka"
+NODE_EXEC="${TON_NODE_ROOT_DIR}/$NODE_EXEC_NAME"
 
 # /ton-node is mount point. Then we create subfolder, so in case of env-switch container shouldn't be re-created
 TON_NODE_ENV_ROOT_DIR="/ton-node-work/$TON_ENV"
 TON_NODE_ENV_TOOLS_DIR="${TON_NODE_ENV_ROOT_DIR}/tools"
 TON_NODE_ENV_DB_DIR="${TON_NODE_ENV_ROOT_DIR}/node_db"
 TON_NODE_ENV_LOGS_DIR="${TON_NODE_ENV_ROOT_DIR}/logs"
-
+TON_NODE_INIT=true
 TON_CONSOLE_KEYS_ROOT=/var/rton-console-keys-${TON_ENV}  # shared docker volume
 
 echo "INFO: R-Node startup..."
@@ -27,8 +28,8 @@ echo "INFO: CONFIGS_PATH = ${CONFIGS_PATH}"
 
 
 echo "INFO: Starting TON node..."
-#
-if [[ ! -f "$TON_CONSOLE_KEYS_ROOT/client" || ! -d "$TON_NODE_ENV_DB_DIR/index_db" ]]; then
+# ! -f "$TON_CONSOLE_KEYS_ROOT/client" || ! -d "$TON_NODE_ENV_DB_DIR/index_db"
+if [[ $TON_NODE_INIT == true ]]; then
   mkdir -p "$TON_NODE_ENV_ROOT_DIR"
   mkdir -p "$TON_CONSOLE_KEYS_ROOT"
   mkdir -p "$TON_NODE_ENV_LOGS_DIR"
@@ -55,7 +56,6 @@ if [[ ! -f "$TON_CONSOLE_KEYS_ROOT/client" || ! -d "$TON_NODE_ENV_DB_DIR/index_d
 
   # Generate initial config.json
   cd "${TON_NODE_ENV_ROOT_DIR}" && "${NODE_EXEC}" --configs "${TON_NODE_CONFIGS_DIR}" --ckey "$console_public" &
-
   sleep 10
 
   if [ ! -f "${TON_NODE_CONFIGS_DIR}/config.json" ]; then
