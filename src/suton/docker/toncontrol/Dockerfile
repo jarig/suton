@@ -44,8 +44,8 @@ ENV TONOS_CLI_CONFIG_URL=https://$TON_ENV
 ENV TON_CONTROL_QUEUE_NAME=node-0
 ENV TON_CONTROL_VALIDATOR_NETWORK_ADDR=tonvalidator:3030
 ENV TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR=tonvalidator:3031
-ENV TON_CONTROL_ABI_PATH=/opt/ton/configs/SafeMultisigWallet.abi.json
-ENV TON_CONTROL_TVC_PATH=/opt/ton/configs/SafeMultisigWallet.tvc
+ENV TON_CONTROL_WALLET_ABI_URL=https://raw.githubusercontent.com/tonlabs/ton-labs-contracts/master/solidity/safemultisig/SafeMultisigWallet.abi.json
+ENV TON_CONTROL_WALLET_TVC_URL=https://github.com/tonlabs/ton-labs-contracts/raw/master/solidity/safemultisig/SafeMultisigWallet.tvc
 ENV FIFT_INCLUDES=/opt/ton/fift-libs/libs:/opt/ton/fift-libs/smartcont
 
 # Run Ton Control

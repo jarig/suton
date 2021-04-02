@@ -41,7 +41,7 @@ class RustValidator(Validator):
         return ""
 
     def sign_request(self, sign_key, election_req) -> (str, str):
-        return ""
+        return "", ""
 
     def generate_validation_signed(self, beneficiary_masterchain_adr, election_id, adnl_key, public_key, signature,
                                    max_factor) -> str:

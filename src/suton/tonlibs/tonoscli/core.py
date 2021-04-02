@@ -27,12 +27,12 @@ class TonosCli(TonExec):
     """
     CONFIG_NAME = "tonlabs-cli.conf.json"
 
-    def __init__(self, cli_path, cwd, config_url, abi_path=None, tvc_path=None):
+    def __init__(self, cli_path, cwd, config_url, wallet_abi_url=None, wallet_tvc_url=None):
         super().__init__(cli_path)
         self._cwd = os.path.join(cwd, hashlib.md5(config_url.encode()).hexdigest())
         self._config_url = config_url
-        self._abi_path = abi_path
-        self._tvc_path = tvc_path
+        self._tvc_wallet_url = wallet_tvc_url
+        self._wallet_abi_url = wallet_abi_url
 
     def _run_command(self, command: str, options: list = None, retries=5):
         """
@@ -135,7 +135,7 @@ class TonosCli(TonExec):
             return [HexUtils.hex_to_int(data.get("value0"))]
         return []
 
-    def get_active_election_ids(self, elector_addr: str, elector_abi_url: str):
+    def get_active_election_ids(self, elector_addr: str, elector_abi_url: str) -> List[str]:
         # $(${UTILS_DIR}/tonos-cli run ${ELECTOR_ADDR} active_election_id {} --abi ${CONFIGS_DIR}/Elector.abi.json
         data = self.exec_command('run', elector_addr, 'active_election_id',
                                  {}, abi_url=elector_abi_url)
@@ -182,7 +182,7 @@ class TonosCli(TonExec):
                                               "allBalance": allBalance,
                                               "payload": str(payload)})
             out = self._run_command('call', [address, "submitTransaction", str(transaction_payload),
-                                    "--abi", self._abi_path, "--sign", str(private_key)])
+                                    "--abi", self._materialize_abi(self._wallet_abi_url), "--sign", str(private_key)])
             data = self._parse_result(out)
             log.debug("Tonoscli: {}".format(out))
         return TonTransaction(tid=data.get("transId"))
@@ -192,7 +192,7 @@ class TonosCli(TonExec):
             for key in private_keys:
                 transaction_payload = json.dumps({"transactionId": transaction_id})
                 out = self._run_command('call', [address, "confirmTransaction", transaction_payload,
-                                        "--abi", self._abi_path, "--sign", key])
+                                        "--abi", self._materialize_abi(self._wallet_abi_url), "--sign", key])
                 log.debug("Tonoscli: {}".format(out))
         return TonTransaction(tid=transaction_id)
 
@@ -209,7 +209,7 @@ class TonosCli(TonExec):
 
     def get_depool_events(self, depool_addr,
                           max: int = 100) -> List[DePoolEvent]:
-        out = self._run_command("depool", ["--addr", depool_addr, "events"])
+        out = self._run_command("depool", ["--no-answer", "--addr", depool_addr, "events"])
         log.debug("Tonoscli: {}".format(out))
         events = []
         current_event_id = None
@@ -254,7 +254,7 @@ class TonosCli(TonExec):
     def depool_ticktock(self, depool_address: str, wallet_address: str, private_key: str,
                         custodian_keys: List[str] = None):
         with secret_manager(secrets=[private_key]):
-            out = self._run_command("depool", ["--addr", depool_address, "ticktock",
+            out = self._run_command("depool", ["--no-answer", "--addr", depool_address, "ticktock",
                                                "-w", wallet_address, "--sign", str(private_key)])
             log.debug("Tonoscli: {}".format(out))
             data = self._parse_result(out)

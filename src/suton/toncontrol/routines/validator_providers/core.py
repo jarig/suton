@@ -25,7 +25,7 @@ class Validator(ABC):
         raise NotImplementedError
 
     def generate_validation_request(self, election_id, adnl_key,
-                                    beneficiary_masterchain_adr, max_factor):
+                                    beneficiary_masterchain_adr, max_factor) -> str:
         raise NotImplementedError
 
     def sign_request(self, sign_key, election_req) -> (str, str):

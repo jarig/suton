@@ -87,12 +87,10 @@ def main():
     parser.add_argument("--tonos_cli_path",
                         default='/opt/ton/tools/tonos-cli',
                         help="Path to tonos-cli utility")
-    parser.add_argument("--tonos_cli_abi_path",
-                        default='/opt/configs/SafeMultisigWallet.abi.json',
-                        help="Path to ABI file")
-    parser.add_argument("--tonos_cli_tvc_path",
-                        default='/opt/configs/SafeMultisigWallet.tvc',
-                        help="Path to tvc file")
+    parser.add_argument("--tonos_cli_wallet_abi_url",
+                        help="URL to ABI file")
+    parser.add_argument("--tonos_cli_wallet_tvc_url",
+                        help="URL to tvc file")
     parser.add_argument("--fift_cli_path",
                         default='/opt/ton/crypto/fift',
                         help="Path to fift utility")
@@ -174,8 +172,8 @@ def main():
     log.info("Initializing CLI wrappers...")
     tonos_cli = TonosCli(cli_path=args.tonos_cli_path, cwd=os.path.join(args.tools_cwd_base, "tonos"),
                          config_url=ton_control_settings.TONOS_CLI_CONFIG_URL,
-                         abi_path=args.tonos_cli_abi_path,
-                         tvc_path=args.tonos_cli_tvc_path)
+                         wallet_abi_url=args.tonos_cli_wallet_abi_url,
+                         wallet_tvc_url=args.tonos_cli_wallet_tvc_url)
 
     # create validator provider
     if ton_control_settings.TON_VALIDATOR_TYPE == "rust":

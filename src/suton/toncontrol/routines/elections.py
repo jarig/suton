@@ -271,7 +271,7 @@ class ElectionsRoutine(object):
         e_finish_in = election.get_election_finishes_in()
         lower_than_mine = [s for s in stakes if s < election_stake]
         # 100 - our's is the highest, 0 - is the lowest
-        join_threshold = (len(lower_than_mine) / len(stakes)) * 100
+        join_threshold = (len(lower_than_mine) / (len(stakes) + 1)) * 100
         telemetry_holder["join_threshold"] = join_threshold
         log.debug(f"Threshold {join_threshold}, stake {election_stake}, max validators {max_validators}")
         if offset and offset < election.get_election_finishes_in():

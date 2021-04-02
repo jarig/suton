@@ -43,7 +43,7 @@ sudo chown toncontrol:toncontrol -R "$tool_cwds_root"
 args="--work_dir=$work_dir --log_path=$work_dir/log --keys_dir=$keys_dir"
 args="$args --tools_cwd_base=$tool_cwds_root"
 args="$args --secret_manager_connection_env=TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING"
-args="$args --tonos_cli_abi_path=$TON_CONTROL_ABI_PATH --tonos_cli_tvc_path=$TON_CONTROL_TVC_PATH"
+args="$args --tonos_cli_wallet_abi_url=$TON_CONTROL_WALLET_ABI_URL --tonos_cli_wallet_tvc_url=$TON_CONTROL_WALLET_TVC_URL"
 
 add_argument () {
   name=$1
