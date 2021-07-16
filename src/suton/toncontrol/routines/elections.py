@@ -267,14 +267,17 @@ class ElectionsRoutine(object):
     def _satisfies_prudent_settings(self, election: Election, prudent_settings: PrudentElectionSettings,
                                     election_stake: int, max_validators: int,
                                     stakes: List[int], telemetry_holder: dict) -> bool:
+        if not stakes:
+            log.info("No stake information present for prudent settings")
+            return True
         log.info(f"Checking prudent elections settings: {prudent_settings}")
         offset = prudent_settings.election_end_join_offset
         e_finish_in = election.get_election_finishes_in()
         lower_than_mine = [s for s in stakes if s < election_stake]
-        # 100 - our's is the highest, 0 - is the lowest
-        join_threshold = (len(lower_than_mine) / len(stakes)) * 100
-        telemetry_holder["join_threshold"] = join_threshold
-        log.debug(f"Threshold {join_threshold}, stake {election_stake}, max validators {max_validators}")
+        # 100 - everyone are lower, 0 - everyone are higher than us
+        perc_stakes_lower = (len(lower_than_mine) / len(stakes)) * 100
+        telemetry_holder["join_threshold"] = perc_stakes_lower
+        log.debug(f"Stakes lower than mine {perc_stakes_lower}%, stake {election_stake}, max validators {max_validators}")
         if offset and offset < election.get_election_finishes_in():
             log.warning(f"Not joining, as too early based on prudent settings: offset {offset}s, "
                         f"but until election finish {e_finish_in}s")
@@ -282,8 +285,8 @@ class ElectionsRoutine(object):
         if max_validators > len(stakes):
             # there are free slots still available
             return True
-        if join_threshold >= prudent_settings.join_threshold:
-            log.warning(f"Not joining as not satisfying prudent election join threshold: {join_threshold}. Stake given {election_stake}.")
+        if perc_stakes_lower < prudent_settings.join_threshold:
+            log.warning(f"Not joining as not satisfying prudent election join threshold: {perc_stakes_lower}. Stake given {election_stake}.")
             return False
         return True
 

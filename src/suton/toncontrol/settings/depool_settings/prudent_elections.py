@@ -14,7 +14,7 @@ class PrudentElectionSettings(JsonAware):
         Defined in seconds.
         :param join_threshold: Percentage that defines election join condition, based on the current number of stakes
         their min_value and stake you can/want to make. Threshold = participants_with_lower_than_your_stake / first_N_participants
-        So for example, if you define 10, then elections will be taken if 10% of valid participants (who potentially can join)
+        So for example, if you define 10, then elections will be taken if at least 10% of valid participants (who potentially can join)
          has lower stake than yours at a moment in time when election join attempt is made (which regulated by election_end_join_offset param)
         """
         self.election_end_join_offset = election_end_join_offset
