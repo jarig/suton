@@ -2,7 +2,7 @@ import hashlib
 import json
 import logging
 import os
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from pip._vendor import requests
 from toncommon.contextmanager import secret_manager
@@ -21,11 +21,14 @@ class TonosCli(TonExec):
     """
     Python wrapper for tonos CLI
     """
-    CONFIG_NAME = "tonlabs-cli.conf.json"
+    CONFIG_NAME = "tonos-cli.conf.json"
 
     def __init__(self, cli_path, cwd, config_url, abi_path=None, tvc_path=None):
         super().__init__(cli_path)
-        self._cwd = os.path.join(cwd, hashlib.md5(config_url.encode()).hexdigest())
+        with open(cli_path, "rb") as f:
+            h = hashlib.md5(f.read())
+            h.update(config_url.encode())
+        self._cwd = os.path.join(cwd, h.hexdigest())
         self._config_url = config_url
         self._abi_path = abi_path
         self._tvc_path = tvc_path
@@ -85,7 +88,7 @@ class TonosCli(TonExec):
                     raise Exception("Account not found: {}".format(address))
                 tokens = line.split(":")
                 data[tokens[0].strip()] = tokens[1].strip()
-        return TonAccount(acc_type=data["acc_type"], balance=int(data.get("balance", 0)),
+        return TonAccount(acc_type=data["acc_type"], balance=int(data.get("balance", 0).replace("nanoton", "").strip()),
                           last_paid=int(data.get("last_paid")), data=data.get("data(boc)"))
 
     def call_command(self, address: str, command: str, payload: dict,
