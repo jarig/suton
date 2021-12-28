@@ -11,12 +11,13 @@ class DePoolSettings(JsonAware):
 
     def __init__(self, depool_address: str, proxy_addresses: List[str], max_ticktock_period=3600,
                  prudent_election_settings: PrudentElectionSettings = None,
-                 replenish_settings: AutoReplenishSettings = None):
+                 replenish_settings: AutoReplenishSettings = None, enable_elections=True):
         self.depool_address = depool_address
         self.proxy_addresses = proxy_addresses
         self.max_ticktock_period = max_ticktock_period
         self.prudent_election_settings = prudent_election_settings
         self.replenish_settings = replenish_settings
+        self.enable_elections = enable_elections
         self._last_ticktock = 0
 
     def get_last_ticktock(self):

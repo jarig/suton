@@ -422,6 +422,7 @@ class ElectionsRoutine(object):
                                     log.info("Joining in depool mode")
                                     depool_list = self._election_settings.DEPOOL_LIST
                                     for depool_data in depool_list:
+                                        log.info(f"Participation enabled: {depool_data.enable_elections}")
                                         send_tick_tock = False
                                         depool_healthy = True
                                         log.info("Checking DePool: {}".format(depool_data))
@@ -450,7 +451,7 @@ class ElectionsRoutine(object):
                                                 election_status_telemetry_data['error'] = str(LowDePoolBalanceException("DePool Balance is low to operate",
                                                                                                                         balance=last_event.balance))
 
-                                        if depool_healthy:
+                                        if depool_healthy and depool_data.enable_elections:
                                             election_events = [event for event in depool_events if
                                                                isinstance(event, DePoolElectionEvent)]
 
