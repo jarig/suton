@@ -73,10 +73,11 @@ class RustValidator(Validator):
     def get_current_participant_stakes(self, elector_addr) -> List[int]:
         try:
             if not self._elector_abi_url:
-                log.warning("FIFT with Rust not supporting participant stake retrieval at a moment.")
-                return []
-            data = self._tonos_cli.get_election_data(elector_addr=elector_addr,
-                                                     elector_abi_url=self._elector_abi_url)
+                log.warning("Using FIFT call to elector to get participant list, as no ABI specified")
+                data = self._tonos_cli.get_participant_list_fift(elector_addr=elector_addr)
+            else:
+                data = self._tonos_cli.get_election_data(elector_addr=elector_addr,
+                                                         elector_abi_url=self._elector_abi_url)
             return [int(m.stake) for m in data.members]
         except Exception:
             log.exception("Failed to get participant stake list")

@@ -173,7 +173,7 @@ class TonosCli(TonExec):
                 return [str(value)]
         return []
 
-    def get_election_data(self, elector_addr: str, elector_abi_url: str) -> (ElectionData, None):
+    def get_election_data(self, elector_addr: str, elector_abi_url: str) -> Optional[ElectionData]:
         data = self.exec_command('run', elector_addr, 'get',
                                  {}, abi_url=elector_abi_url)
         if data:
@@ -183,6 +183,27 @@ class TonosCli(TonExec):
                                                         max_factor=m_data.get("max_factor", 3),
                                                         timestamp=m_data.get("time"))
                                          for m_hash, m_data in data.get("cur_elect", {}).get("members", {}).items()
+                                         ])
+        return None
+
+    def get_participant_list_fift(self, elector_addr: str) -> Optional[ElectionData]:
+        # tonos-cli runget -1:3333333333333333333333333333333333333333333333333333333333333333 participant_list
+        data = self.exec_command_fift("runget", elector_addr, "participant_list")
+        if data:
+            # a bit weird output that 'runget' returns with nested arrays
+            def collect(p, res):
+                if p and p[0]:
+                    res.append(p[0])
+                    if len(p) > 1:
+                        collect(p[1], res)
+            stakes = []
+            collect(data[0], stakes)
+            return ElectionData(election_open=True,
+                                members=[ElectionMember(addr=stake_data[0],
+                                                        stake=int(stake_data[1]),
+                                                        max_factor=3,
+                                                        timestamp=0)
+                                         for stake_data in stakes
                                          ])
         return None
 
