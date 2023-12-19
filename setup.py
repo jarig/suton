@@ -20,7 +20,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     install_requires=[
-         'paramiko==2.7.1',
+         'paramiko==3.4.0',
     ],
     include_package_data=True,
     python_requires='>=3.6',
