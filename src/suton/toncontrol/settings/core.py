@@ -13,7 +13,6 @@ class TonSettings(BaseTonControlSettings):
     RUST_TON_NODE_GITHUB_REPO = "https://github.com/tonlabs/ton-labs-node.git"
     RUST_TON_NODE_GITHUB_COMMIT_ID = "master"
     RUST_TONOS_CLI_GITHUB_COMMIT_ID = "master"
-    RUST_TON_NODE_TOOLS_GITHUB_COMMIT_ID = "master"
 
     # Intended to be overriden and values set to appropriate values
     # Note: do not commit sensitive data, and instead use Python to derive them in run-time from secure places
@@ -28,6 +27,7 @@ class TonSettings(BaseTonControlSettings):
     TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING = None  # never commit your raw seeds, encrypt them or use connection-strings to vaults
     TON_CONTROL_QUEUE_NAME = 'ton-validator-0'
     TONOS_CLI_CONFIG_URL = None
+    # Project Id in Evercloud (dashboard.evercloud.dev)
     TON_PROJECT_ID = None
     VALIDATOR_MAX_SYNC_DIFF = 30
 

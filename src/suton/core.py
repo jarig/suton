@@ -86,7 +86,6 @@ class TonManage(object):
         cenv['TON_WORK_DIR'] = node_settings.TON_WORK_DIR
 
         cenv['RUST_TONOS_CLI_GITHUB_COMMIT_ID'] = node_settings.RUST_TONOS_CLI_GITHUB_COMMIT_ID
-        cenv['RUST_TON_NODE_TOOLS_GITHUB_COMMIT_ID'] = node_settings.RUST_TON_NODE_TOOLS_GITHUB_COMMIT_ID
         cenv['RUST_TON_NODE_GITHUB_COMMIT_ID'] = node_settings.RUST_TON_NODE_GITHUB_COMMIT_ID
         cenv['RUST_TON_NODE_GITHUB_REPO'] = node_settings.RUST_TON_NODE_GITHUB_REPO
 
