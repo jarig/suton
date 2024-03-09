@@ -28,17 +28,19 @@ class TonosCli(TonExec):
     """
     CONFIG_NAME = "tonos-cli.conf.json"
 
-    def __init__(self, cli_path, cwd, config_url, wallet_abi_url=None, wallet_tvc_url=None,
-                 ton_endpoints=None):
+    def __init__(self, cli_path, cwd, config_url, ton_project_id, ton_project_secret=None,
+                 wallet_abi_url=None, wallet_tvc_url=None, ton_endpoints=None):
         super().__init__(cli_path)
         with open(cli_path, "rb") as f:
             h = hashlib.md5(f.read())
-            h.update(f"{config_url}.{ton_endpoints}".encode())
+            h.update(f"{config_url}.{ton_endpoints}.{ton_project_id}.{ton_project_secret}".encode())
         self._cwd = os.path.join(cwd, h.hexdigest())
         self._config_url = config_url
         self._tvc_wallet_url = wallet_tvc_url
         self._wallet_abi_url = wallet_abi_url
         self._ton_endpoints = ton_endpoints
+        self._ton_project_id = ton_project_id
+        self._ton_project_secret = ton_project_secret
 
     def _run_command(self, command: str, options: list = None, retries=5):
         """
@@ -49,6 +51,15 @@ class TonosCli(TonExec):
             for i in range(retries):
                 ret, out = self._execute(["config", "--url", self._config_url],
                                          cwd=self._cwd)
+                ret_p, out_p = self._execute(["config", "--project_id", self._ton_project_id],
+                                             cwd=self._cwd)
+                ret = ret + ret_p
+                out = f"{out} {out_p}"
+                if self._ton_project_secret:
+                    ret_ps, out_ps = self._execute(["config", "--access_key", self._ton_project_secret],
+                                                   cwd=self._cwd)
+                    ret = ret + ret_ps
+                    out = f"{out} {out_ps}"
                 if self._ton_endpoints:
                     log.info(f"Configuring endpoints: {self._ton_endpoints}")
                     ret2, out2 = self._execute(["config", "endpoint", "add", self._config_url, self._ton_endpoints],
@@ -248,7 +259,7 @@ class TonosCli(TonExec):
 
     def generate_key_pair_file(self, file_location, phrase):
         with secret_manager(secrets=[phrase]):
-            return self._run_command("getkeypair", [file_location, phrase])
+            return self._run_command("getkeypair", ["-o", file_location, "-p", phrase])
 
     def submit_transaction(self, address, dest, value: int, payload, private_key, bounce=False, allBalance=False) -> TonTransaction:
         with secret_manager(secrets=[private_key]):

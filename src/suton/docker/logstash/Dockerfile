@@ -1,4 +1,4 @@
-FROM docker.elastic.co/logstash/logstash:7.7.0
+FROM docker.elastic.co/logstash/logstash:7.7.1
 
 ARG TON_USER_GID=1001
 
@@ -13,10 +13,14 @@ USER root
 RUN groupadd --gid "$TON_USER_GID" ton
 RUN usermod -a -G ton logstash
 RUN logstash-plugin install logstash-output-kusto
+RUN logstash-plugin install logstash-output-datadog_metrics
+RUN logstash-plugin install logstash-output-exec
 COPY entry.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entry.sh
 
 RUN yum update -y && yum install -y sudo
+#RUN apt-get update && \
+#    apt-get install --no-install-recommends -y sudo
 RUN echo "logstash ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 

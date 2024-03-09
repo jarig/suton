@@ -8,7 +8,7 @@ import socket
 from typing import Optional
 
 from toncommon.core import TonExec
-
+from toncommon.models.depool.DePoolSyncStatus import DePoolSyncStatus
 
 log = logging.getLogger("rcontrol")
 
@@ -89,6 +89,7 @@ class RustConsole(TonExec):
         # getstats
         broken_line_regex = re.compile(r'^\s*"(?P<key>.+)":\s+,?$')
         data = self._run_command(command=f"getstats")
+        log.debug(f"Get stats data: {data}")
         payload = ""
         payload_started = False
         for line in data.splitlines():
@@ -105,6 +106,10 @@ class RustConsole(TonExec):
     def get_sync_time_diff(self) -> int:
         data = self.get_stats()
         return data.get("timediff")
+
+    def get_sync_status(self) -> DePoolSyncStatus:
+        data = self.get_stats()
+        return DePoolSyncStatus(time_diff=data.get("timediff"), sync_status=data.get("sync_status"))
 
     def recover_stake_request(self):
         self._run_command(command=f"recover_stake", wallet_addr=None)

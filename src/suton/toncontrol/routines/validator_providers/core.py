@@ -2,6 +2,7 @@ from abc import ABC
 from typing import List
 
 from toncommon.models.ElectionParams import ElectionParams, ElectionValidatorParams, StakeParams
+from toncommon.models.depool.DePoolSyncStatus import DePoolSyncStatus
 
 
 class Validator(ABC):
@@ -16,6 +17,9 @@ class Validator(ABC):
         pass
 
     def get_sync_time_diff(self) -> int:
+        raise NotImplementedError
+
+    def get_sync_status(self) -> DePoolSyncStatus:
         raise NotImplementedError
 
     def get_new_key(self) -> str:

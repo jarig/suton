@@ -166,6 +166,8 @@ def main():
     log.info("Initializing CLI wrappers...")
     tonos_cli = TonosCli(cli_path=args.tonos_cli_path, cwd=os.path.join(args.tools_cwd_base, "tonos"),
                          config_url=ton_control_settings.TONOS_CLI_CONFIG_URL,
+                         ton_project_id=ton_control_settings.TON_PROJECT_ID,
+                         ton_project_secret=secret_manager.get_project_secret(),
                          wallet_abi_url=args.tonos_cli_wallet_abi_url,
                          wallet_tvc_url=args.tonos_cli_wallet_tvc_url,
                          ton_endpoints=ton_control_settings.TON_ENDPOINTS)

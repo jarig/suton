@@ -23,3 +23,6 @@ class SecretManagerAbstract(object):
         :return:
         """
         return []
+
+    def get_project_secret(self) -> Optional[str]:
+        return None

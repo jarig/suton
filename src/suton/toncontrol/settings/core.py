@@ -28,6 +28,7 @@ class TonSettings(BaseTonControlSettings):
     TON_CONTROL_SECRET_MANAGER_CONNECTION_STRING = None  # never commit your raw seeds, encrypt them or use connection-strings to vaults
     TON_CONTROL_QUEUE_NAME = 'ton-validator-0'
     TONOS_CLI_CONFIG_URL = None
+    TON_PROJECT_ID = None
     VALIDATOR_MAX_SYNC_DIFF = 30
 
     TON_VALIDATOR_CONFIG_URL = "https://raw.githubusercontent.com/tonlabs/main.ton.dev/master/configs/ton-global.config.json"

@@ -3,6 +3,7 @@ from typing import List
 
 from rustconsole.core import RustConsole
 from toncommon.models.ElectionParams import ElectionParams, ElectionValidatorParams, StakeParams
+from toncommon.models.depool.DePoolSyncStatus import DePoolSyncStatus
 from tonoscli.core import TonosCli
 from routines.validator_providers.core import Validator
 
@@ -25,6 +26,9 @@ class RustValidator(Validator):
 
     def get_sync_time_diff(self) -> int:
         return self._console.get_sync_time_diff()
+
+    def get_sync_status(self) -> DePoolSyncStatus:
+        return self._console.get_sync_status()
 
     def get_new_key(self) -> str:
         return ""

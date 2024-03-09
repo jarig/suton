@@ -103,12 +103,14 @@ class ElectionsRoutine(object):
 
     def _check_if_synced(self):
         try:
-            time_diff = self._validator_provider.get_sync_time_diff()
+            sync_status = self._validator_provider.get_sync_status()
+            time_diff = sync_status.time_diff
             if time_diff is None:
                 log.error("Time diff is not available yet, node still initializing...")
                 return False
             log.debug(f"Time diff: {time_diff}, max allowed {self._max_sync_diff}")
             self._send_telemetry('node_status', {'time_diff': time_diff,
+                                                 'sync_status': sync_status.sync_status,
                                                  'max_sync_diff': self._max_sync_diff})
             if time_diff <= self._max_sync_diff:
                 return True

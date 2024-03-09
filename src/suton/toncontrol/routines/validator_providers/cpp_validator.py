@@ -1,4 +1,6 @@
 from typing import List
+
+from toncommon.models.depool.DePoolSyncStatus import DePoolSyncStatus
 from tonfift.core import FiftCli
 from tonliteclient.core import TonLiteClient
 from toncommon.models.ElectionParams import ElectionParams, ElectionValidatorParams, StakeParams
@@ -22,6 +24,10 @@ class CPPValidator(Validator):
 
     def get_sync_time_diff(self) -> int:
         return self._vec.get_sync_time_diff()
+
+    def get_sync_status(self) -> DePoolSyncStatus:
+        diff = self.get_sync_time_diff()
+        return DePoolSyncStatus(time_diff=diff, sync_status="unknown")
 
     def get_new_key(self) -> str:
         return self._vec.get_new_key()
