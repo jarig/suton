@@ -4,7 +4,7 @@ import threading
 import time
 from typing import List
 
-from logstash.client import LogStashClient
+from telemetry.base_client import ActiveTelemetryClient
 from settings.wallet_settings.wallets import ActionSpec
 from tonoscli.core import TonosCli
 from tonvalidator.core import TonValidatorEngineConsole
@@ -46,5 +46,5 @@ class WalletManagementRoutine(object):
     def _send_telemetry(self, data_type, data: dict):
         data['timestamp'] = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         data['data_type'] = data_type
-        LogStashClient.get_client().send_data('wallets', data)
+        ActiveTelemetryClient.get_client().send_data('wallets', data)
 

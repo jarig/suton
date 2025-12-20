@@ -4,22 +4,28 @@ import socket
 import threading
 from queue import Queue, Empty
 from typing import Optional
+import sys
+import os
+
+# Add parent directory to path to import telemetry base
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from telemetry.base_client import BaseTelemetryClient
 
 logger = logging.getLogger('logstash_client')
 
 
-class LogStashClient(object):
+class LogStashClient(BaseTelemetryClient):
     """
         Logstash client which helps sending data to logstash service via TCP protocol in json format
     """
     _instance = None
 
     def __init__(self, hostname, port, pre_conf_data: Optional[dict] = None):
+        super().__init__(pre_conf_data)
         self._hostname = hostname
         self._port = port
         self._queue = Queue()
         self._max_batch = 10
-        self._pre_conf_data = pre_conf_data
 
     def send_data(self, module, data: dict):
         data['module'] = module
@@ -69,6 +75,7 @@ class LogStashClient(object):
             raise Exception("LogStashClient should be configured first, call 'configure_client' before.")
         thread = threading.Thread(target=LogStashClient._instance._process_data, daemon=True)
         thread.start()
+        return LogStashClient._instance
 
     @staticmethod
     def get_client():

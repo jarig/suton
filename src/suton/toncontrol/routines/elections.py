@@ -21,7 +21,7 @@ from tonoscli.core import TonosCli
 from tonvalidator.exceptions.connection import TonConnectionException
 from toncommon.models.ElectionParams import StakeParams, ElectionParams
 
-from logstash.client import LogStashClient
+from telemetry.base_client import ActiveTelemetryClient
 
 log = logging.getLogger("elections")
 
@@ -123,7 +123,7 @@ class ElectionsRoutine(object):
     def _send_telemetry(self, data_type, data: dict):
         data['timestamp'] = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         data['data_type'] = data_type
-        LogStashClient.get_client().send_data('elections', data)
+        ActiveTelemetryClient.get_client().send_data('elections', data)
 
     def _join_elections_validator_mode(self, validator_addr: str, election: Election,
                                        elector_addr: str, election_stake: int, stake_params: StakeParams,
@@ -289,7 +289,7 @@ class ElectionsRoutine(object):
         if max_validators > len(stakes):
             # there are free slots still available
             return True
-        if perc_stakes_lower < prudent_settings.join_threshold:
+        if prudent_settings.join_threshold and perc_stakes_lower < prudent_settings.join_threshold:
             log.warning(f"Not joining as not satisfying prudent election join threshold: {perc_stakes_lower}. Stake given {election_stake}.")
             return False
         return True

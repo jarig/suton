@@ -37,29 +37,29 @@ services:
       - type: volume
         source: validator-console-keys
         target: /var/rton-console-keys-${TON_ENV}
-  tonlogstash:
-    image: tonlogstash:latest
-    restart: on-failure
-    build: 
-      context: ./logstash
-      args:
-        TON_USER_GID: ${HOST_TON_GROUP_ID}
-    ports:
-      - "127.0.0.1:${LOGSTASH_HOST_DATA_INPUT_PORT}:${LOGSTASH_HOST_DATA_INPUT_PORT}"
-    volumes:
-      - type: bind
-        source: ${TON_WORK_DIR}
-        target: /var/ton-work
-      - type: bind
-        source: ${TON_CONTROL_WORK_DIR}
-        target: /var/ton-control
-    environment:
-      - TON_ENV=${TON_ENV}
-      - TON_WORK_DIR=/var/ton-work
-      - TON_CONTROL_WORK_DIR=/var/ton-control
-      - TON_LOG_DIR=/var/ton-work/${TON_ENV}/log
-      - TON_CONTROL_LOG_DIR=/var/ton-control/${TON_ENV}/log
-      - LOGSTASH_HOST_DATA_INPUT_PORT=${LOGSTASH_HOST_DATA_INPUT_PORT}
+  #tonlogstash:
+  #  image: tonlogstash:latest
+  #  restart: on-failure
+  #  build: 
+  #    context: ./logstash
+  #    args:
+  #      TON_USER_GID: ${HOST_TON_GROUP_ID}
+  #  ports:
+  #    - "127.0.0.1:${TELEMETRY_DATA_INPUT_PORT}:${TELEMETRY_DATA_INPUT_PORT}"
+  #  volumes:
+  #    - type: bind
+  #      source: ${TON_WORK_DIR}
+  #      target: /var/ton-work
+  #    - type: bind
+  #      source: ${TON_CONTROL_WORK_DIR}
+  #      target: /var/ton-control
+  #  environment:
+  #    - TON_ENV=${TON_ENV}
+  #    - TON_WORK_DIR=/var/ton-work
+  #    - TON_CONTROL_WORK_DIR=/var/ton-control
+  #    - TON_LOG_DIR=/var/ton-work/${TON_ENV}/log
+  #    - TON_CONTROL_LOG_DIR=/var/ton-control/${TON_ENV}/log
+  #    - LOGSTASH_HOST_DATA_INPUT_PORT=${TELEMETRY_DATA_INPUT_PORT}
   toncontrol:
     image: toncontrol:latest
     restart: always
@@ -69,6 +69,8 @@ services:
       args:
         HOST_TON_CONTROL_USER_ID: $HOST_TON_CONTROL_USER_ID
         HOST_TON_CONTROL_GROUP_ID: $HOST_TON_CONTROL_GROUP_ID
+    ports:
+      - "127.0.0.1:${TELEMETRY_DATA_INPUT_PORT}:${TELEMETRY_DATA_INPUT_PORT}"
     volumes:
       - type: volume
         source: validator-console-keys
@@ -80,8 +82,12 @@ services:
       - type: bind
         source: ${TON_CONTROL_WORK_DIR}
         target: /var/ton-control
+      - type: bind
+        source: ${TON_WORK_DIR}
+        target: /var/ton-work
     environment:
       - TON_ENV=${TON_ENV}
+      - TON_VALIDATOR_LOG_DIR=/var/ton-work/${TON_ENV}/logs
       - TON_CONTROL_SETTINGS=${TON_CONTROL_SETTINGS}
       - TON_CONTROL_VALIDATOR_NETWORK_ADDR=${TON_CONTROL_VALIDATOR_NETWORK_ADDR}
       - TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR=${TON_CONTROL_VALIDATOR_LITE_CLIENT_ADDR}

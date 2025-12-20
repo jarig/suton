@@ -61,6 +61,7 @@ add_argument () {
   fi
 }
 
+add_argument "ton_validator_log_dir" $TON_VALIDATOR_LOG_DIR
 add_argument "rconsole_path" $TON_RCONSOLE_PATH
 add_argument "default_election_stake" $TON_CONTROL_DEFAULT_STAKE
 add_argument "stake_max_factor" $TON_CONTROL_STAKE_MAX_FACTOR
