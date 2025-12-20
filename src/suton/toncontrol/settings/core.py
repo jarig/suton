@@ -39,6 +39,14 @@ class TonSettings(BaseTonControlSettings):
     TON_CONTROL_SECRET_MANAGER_PROVIDER = 'secrets.envprovider.core'
     TON_CONTROL_QUEUE_PROVIDER = 'mqueue.azureservicebus.core'
 
+    # Telemetry settings
+    TELEMETRY_PROVIDER = 'appinsights'  # 'logstash' or 'appinsights'
+    TELEMETRY_EXTERNAL_DATA_INPUT_PORT = 5961
+    APPINSIGHTS_INSTRUMENTATION_KEY = None
+    APPINSIGHTS_WATCH_TON_VALIDATOR_LOGS = True
+    APPINSIGHTS_TCP_SERVER_ENABLED = False
+    APPINSIGHTS_TCP_SERVER_HOST = '0.0.0.0'
+
     TON_VALIDATOR_TYPE = "rust"
     ELECTOR_ABI_URL = None  # required for Rust node
 

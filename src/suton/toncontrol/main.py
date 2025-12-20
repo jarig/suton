@@ -15,6 +15,8 @@ from routines.election_providers.depool_provider import DePoolElectionProvider
 from routines.election_providers.direct_provider import DirectElectionProvider
 from rustconsole.core import RustConsole
 from logstash.client import LogStashClient
+from appinsights.client import AppInsightsClient
+from telemetry.base_client import ActiveTelemetryClient, DummyTelemetryClient
 from routines.elections import ElectionsRoutine
 from routines.qcontroller import QueueRoutine
 from tonvalidator.core import TonValidatorEngineConsole
@@ -34,6 +36,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--work_dir', dest='work_dir', default='/var/ton-control',
                         help='Working directory for ton-control service')
+    parser.add_argument('--ton_validator_log_dir', dest='ton_validator_log_dir', default=None,
+                        help='Log directory for ton validator (mounted from the host)')
     parser.add_argument('--log_path', dest='log_path',
                         default='/var/ton-control/log', help='Path to log file')
     parser.add_argument("--keys_dir",
@@ -114,7 +118,7 @@ def main():
                                                               AutoReplenishSettings])
         log.debug("Settings in use: \n {}".format(ton_control_settings))
     if args.work_dir:
-        ton_control_settings.TON_WORK_DIR = args.work_dir
+        ton_control_settings.TON_CONTROL_WORK_DIR = args.work_dir
 
     if args.client_key:
         ton_control_settings.TON_CONTROL_CLIENT_KEY_PATH = args.client_key
@@ -143,8 +147,8 @@ def main():
     if args.validator_network_address:
         ton_control_settings.TON_CONTROL_VALIDATOR_NETWORK_ADDR = args.validator_network_address
 
-    if not os.path.exists(ton_control_settings.TON_WORK_DIR):
-        os.makedirs(ton_control_settings.TON_WORK_DIR)
+    if not os.path.exists(ton_control_settings.TON_CONTROL_WORK_DIR):
+        os.makedirs(ton_control_settings.TON_CONTROL_WORK_DIR)
     
     # verify that keys exist
     keys_to_verify = [ton_control_settings.TON_CONTROL_CLIENT_KEY_PATH,
@@ -199,15 +203,61 @@ def main():
     else:
         election_provider = DirectElectionProvider(validator_provider)
 
-    log.info("Initializing LogStash client...")
-    LogStashClient.configure_client("tonlogstash", 5959, {
-        "node_name": ton_control_settings.NODE_NAME
-    })
+    # Initialize telemetry client based on configuration
+    log.info("Initializing Telemetry client...")
+    telemetry_client = DummyTelemetryClient()
+    common_properties = {"node_name": ton_control_settings.NODE_NAME}
+    
+    if ton_control_settings.TELEMETRY_PROVIDER == 'appinsights':
+        log.info("Configuring Application Insights client")
+        if ton_control_settings.APPINSIGHTS_INSTRUMENTATION_KEY:
+            AppInsightsClient.configure_client(
+                instrumentation_key=ton_control_settings.APPINSIGHTS_INSTRUMENTATION_KEY,
+                pre_conf_data=common_properties
+            )
+            telemetry_client = AppInsightsClient.start_client()
+            
+            if not os.path.exists(args.ton_validator_log_dir):
+                log.warning("TON Validator log dir does not exist: {}".format(args.ton_validator_log_dir))
 
+            # Setup log file watching if enabled
+            if ton_control_settings.APPINSIGHTS_WATCH_TON_VALIDATOR_LOGS and \
+              args.ton_validator_log_dir and os.path.exists(args.ton_validator_log_dir):
+                log.info("Starting TON Validator log watcher")
+                telemetry_client.add_ton_validator_log_watcher(
+                    log_dir=args.ton_validator_log_dir,
+                    pattern="*.log",
+                    check_interval=5,
+                    # TODO: make message filters configurable
+                    message_filters=['SLOW']
+                )
+            
+            # Setup TCP server if enabled
+            if ton_control_settings.APPINSIGHTS_TCP_SERVER_ENABLED:
+                log.info("Starting AppInsights TCP server on {}:{}".format(
+                    ton_control_settings.APPINSIGHTS_TCP_SERVER_HOST,
+                    ton_control_settings.TELEMETRY_EXTERNAL_DATA_INPUT_PORT
+                ))
+                telemetry_client.start_tcp_server(
+                    host=ton_control_settings.APPINSIGHTS_TCP_SERVER_HOST,
+                    port=ton_control_settings.TELEMETRY_EXTERNAL_DATA_INPUT_PORT
+                )
+        else:
+            log.warning("Application Insights enabled but no instrumentation key provided")
+    
+    if ton_control_settings.TELEMETRY_PROVIDER == 'logstash':
+        log.info("Configuring LogStash client")
+        LogStashClient.configure_client("tonlogstash", 5959, common_properties)
+        LogStashClient.start_client()
+        telemetry_client = LogStashClient.get_client()
+
+    if telemetry_client:
+        ActiveTelemetryClient.set_client(telemetry_client)
+        log.info("Telemetry client initialized: {}".format(type(telemetry_client)))
+        
     log.info("Starting routines...")
-    LogStashClient.start_client()
     # Validator
-    elections_routine = ElectionsRoutine(work_dir=os.path.join(args.work_dir, "elections"),
+    elections_routine = ElectionsRoutine(work_dir=os.path.join(ton_control_settings.TON_CONTROL_WORK_DIR, "elections"),
                                          tonos_cli=tonos_cli,
                                          election_provider=election_provider,
                                          validator_provider=validator_provider,
@@ -241,7 +291,7 @@ def configure_logging(log_dir):
         "toncontrol | qcontroller": {
             "propagate": True
         },
-        "logstash_client": {
+        "logstash_client | appinsights_client | log_watcher": {
             "file": "telemetry.log"
         },
         # external libs

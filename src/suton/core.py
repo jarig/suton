@@ -92,6 +92,8 @@ class TonManage(object):
         cenv['TON_CONTROL_WORK_DIR'] = node_settings.TON_CONTROL_WORK_DIR
         cenv['TON_CONTROL_SETTINGS'] = json.dumps(node_settings.to_json())
 
+        cenv['TELEMETRY_DATA_INPUT_PORT'] = str(node_settings.TELEMETRY_EXTERNAL_DATA_INPUT_PORT)
+
         if node_settings.TON_ENV:
             cenv['TON_ENV'] = node_settings.TON_ENV
 
