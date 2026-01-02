@@ -376,15 +376,16 @@ class ElectionsRoutine(object):
                             participant_number = len(participant_stakes)
                             lowest_stake = min(participant_stakes) if participant_stakes else 0
                             election_validator_params = self._validator_provider.get_election_validator_params()
-                            max_validators = election_validator_params.max_validators
-                            valid_stakes = sorted(participant_stakes, reverse=True)[:max_validators]
-                            lowest_valid_stake = min(valid_stakes) if valid_stakes else 0
-                            election_status_telemetry_data["lowest_valid_stake"] = lowest_valid_stake
-                            election_status_telemetry_data["participants"] = participant_number
-                            election_status_telemetry_data["lowest_stake"] = lowest_stake
-                            election_status_telemetry_data["max_validators"] = election_validator_params.max_validators
-                            log.info(f"Participants {participant_number}, lowest stake {lowest_stake}, "
-                                     f"lowest valid {lowest_valid_stake}, max validators {election_validator_params.max_validators}.")
+                            if election_validator_params:
+                                max_validators = election_validator_params.max_main_validators
+                                valid_stakes = sorted(participant_stakes, reverse=True)[:max_validators]
+                                lowest_valid_stake = min(valid_stakes) if valid_stakes else 0
+                                election_status_telemetry_data["lowest_valid_stake"] = lowest_valid_stake
+                                election_status_telemetry_data["participants"] = participant_number
+                                election_status_telemetry_data["lowest_stake"] = lowest_stake
+                                election_status_telemetry_data["max_validators"] = max_validators
+                                log.info(f"Participants {participant_number}, lowest stake {lowest_stake}, "
+                                        f"lowest valid {lowest_valid_stake}, max validators {max_validators}.")
                             if not new_elections:
                                 log.info("No new elections found, already participating in all of the existing ones.")
                             else:
@@ -400,7 +401,10 @@ class ElectionsRoutine(object):
                                     balance_left = validator_balance
                                     election_stake = self._compute_stake(stake_per_election)
                                     election_status_telemetry_data["election_stake"] = election_stake
+                                    election_seq = 0
                                     for election in new_elections:
+                                        election_seq += 1
+                                        election_status_telemetry_data[f"election_finishes_in_{election_seq}"] = election.get_election_finishes_in()
                                         if self._election_settings.PRUDENT_ELECTION_SETTINGS and \
                                                 not self._satisfies_prudent_settings(election=election,
                                                                                      prudent_settings=self._election_settings.PRUDENT_ELECTION_SETTINGS,
@@ -409,6 +413,7 @@ class ElectionsRoutine(object):
                                                                                      stakes=valid_stakes,
                                                                                      telemetry_holder=election_status_telemetry_data):
                                             log.warning("Prudent settings not satisfied, not joining.")
+                                            election_status_telemetry_data["election_taken"] = 0
                                             continue
                                         if (balance_left - election_stake) < self._min_balance:
                                             election_status_telemetry_data['error'] = 'Not enough balance'
@@ -417,6 +422,7 @@ class ElectionsRoutine(object):
                                                     election.election_id,
                                                     self._min_balance))
                                             break
+                                        election_status_telemetry_data["election_taken"] = 1
                                         if self._join_elections_validator_mode(validator_addr=validator_addr,
                                                                                election=election,
                                                                                elector_addr=elector_addr,
@@ -481,11 +487,15 @@ class ElectionsRoutine(object):
                                                         depool_data))
                                                 send_tick_tock = True
                                             # Join elections
+                                            election_seq = 0
                                             for event, election in elections_to_join:
+                                                election_seq += 1
                                                 log.info("Joining via proxy: {}".format(event.proxy))
                                                 depool_account = self._tonos_cli.get_account(depool_addr)
                                                 stake = depool_account.balance if len(self._active_elections) else depool_account.balance // 2
+                                                election_status_telemetry_data["depool_balance"] = depool_account.balance
                                                 election_status_telemetry_data["election_stake"] = stake
+                                                election_status_telemetry_data[f"election_finishes_in_{election_seq}"] = election.get_election_finishes_in()
                                                 if depool_data.prudent_election_settings and \
                                                         not self._satisfies_prudent_settings(election=election,
                                                                                              prudent_settings=depool_data.prudent_election_settings,
@@ -494,9 +504,11 @@ class ElectionsRoutine(object):
                                                                                              stakes=valid_stakes,
                                                                                              telemetry_holder=election_status_telemetry_data):
                                                     log.warning("Prudent settings not satisfied, not joining.")
+                                                    election_status_telemetry_data["election_taken"] = 0
                                                     continue
                                                 log.info("Joining via proxy: {} to: {}".format(event.proxy,
                                                                                                election))
+                                                election_status_telemetry_data["election_taken"] = 1
                                                 self._join_elections_depool_mode(depool_addr=depool_addr,
                                                                                  validator_addr=validator_addr,
                                                                                  election=election,

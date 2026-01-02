@@ -1,3 +1,4 @@
+from ast import Tuple
 import hashlib
 import json
 import logging
@@ -126,7 +127,7 @@ class TonosCli(TonExec):
         data = self.get_config(17)
         return StakeParams(data["min_stake"], data["max_stake"])
 
-    def get_election_validator_params(self) -> (ElectionValidatorParams, None):
+    def get_election_validator_params(self) -> Optional[ElectionValidatorParams]:
         data = self.get_config(16)
         if data and "max_validators" in data:
             return ElectionValidatorParams(max_validators=data["max_validators"],
@@ -134,7 +135,7 @@ class TonosCli(TonExec):
                                            min_validators=data["min_validators"])
         return None
 
-    def get_elector_params(self) -> (ElectionParams, None):
+    def get_elector_params(self) -> Optional[ElectionParams]:
         data = self.get_config(15)
         if data:
             return ElectionParams(validators_elected_for=data["validators_elected_for"],

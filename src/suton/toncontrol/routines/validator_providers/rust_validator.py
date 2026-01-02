@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional
 
 from rustconsole.core import RustConsole
 from toncommon.models.ElectionParams import ElectionParams, ElectionValidatorParams, StakeParams
@@ -70,7 +70,7 @@ class RustValidator(Validator):
             return self._tonos_cli.get_active_election_ids_fift(elector_addr)
         return self._tonos_cli.get_active_election_ids(elector_addr, elector_abi_url=self._elector_abi_url)
 
-    def get_elector_params(self) -> (ElectionParams, None):
+    def get_elector_params(self) -> Optional[ElectionParams]:
         # get config 15
         return self._tonos_cli.get_elector_params()
 
@@ -87,7 +87,7 @@ class RustValidator(Validator):
             log.exception("Failed to get participant stake list")
         return []
 
-    def get_election_validator_params(self) -> (ElectionValidatorParams, None):
+    def get_election_validator_params(self) -> Optional[ElectionValidatorParams]:
         # get config 16
         return self._tonos_cli.get_election_validator_params()
 

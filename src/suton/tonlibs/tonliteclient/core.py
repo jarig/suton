@@ -56,7 +56,7 @@ class TonLiteClient(TonExec):
                 return TonAddress.set_address_prefix(m.group(1).strip(), TonAddress.Type.MASTER_CHAIN)
         return None
 
-    def get_election_validator_params(self) -> (ElectionValidatorParams, None):
+    def get_election_validator_params(self) -> Optional[ElectionValidatorParams]:
         # ConfigParam(16) = ( max_validators:1000 max_main_validators:100 min_validators:13)
         out = self._run_command("getconfig 16", timeout=10)
         pattern = re.compile(r"ConfigParam\(16\)\s+=\s+\((.+)\)")
@@ -70,7 +70,7 @@ class TonLiteClient(TonExec):
                 return params
         return None
 
-    def get_elector_params(self) -> (ElectionParams, None):
+    def get_elector_params(self) -> Optional[ElectionParams]:
         # ConfigParam(15) = ( validators_elected_for:65536 elections_start_before:32768 elections_end_before:8192 stake_held_for:32768)
         out = self._run_command("getconfig 15", timeout=10)
         pattern = re.compile(r"ConfigParam\(15\)\s+=\s+\((.+)\)")

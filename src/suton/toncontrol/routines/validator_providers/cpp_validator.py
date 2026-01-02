@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 from toncommon.models.depool.DePoolSyncStatus import DePoolSyncStatus
 from tonfift.core import FiftCli
@@ -66,7 +66,7 @@ class CPPValidator(Validator):
     def get_current_participant_stakes(self, elector_addr) -> List[int]:
         return self._lite_client.get_current_participant_stakes(elector_addr)
 
-    def get_election_validator_params(self) -> (ElectionValidatorParams, None):
+    def get_election_validator_params(self) -> Tuple[ElectionValidatorParams, None]:
         return self._lite_client.get_election_validator_params()
 
     def get_stake_params(self) -> StakeParams:

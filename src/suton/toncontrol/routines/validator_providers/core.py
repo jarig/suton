@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import List
+from typing import List, Optional
 
 from toncommon.models.ElectionParams import ElectionParams, ElectionValidatorParams, StakeParams
 from toncommon.models.depool.DePoolSyncStatus import DePoolSyncStatus
@@ -45,13 +45,13 @@ class Validator(ABC):
     def get_election_ids(self, elector_addr) -> [str]:
         raise NotImplementedError
 
-    def get_elector_params(self) -> (ElectionParams, None):
+    def get_elector_params(self) -> Optional[ElectionParams]:
         raise NotImplementedError
 
     def get_current_participant_stakes(self, elector_addr) -> List[int]:
         raise NotImplementedError
 
-    def get_election_validator_params(self) -> (ElectionValidatorParams, None):
+    def get_election_validator_params(self) -> Optional[ElectionValidatorParams]:
         raise NotImplementedError
 
     def get_stake_params(self) -> StakeParams:
