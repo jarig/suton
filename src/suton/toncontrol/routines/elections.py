@@ -160,7 +160,7 @@ class ElectionsRoutine(object):
                     election_stake = stake_params.max_stake
             election_telemetry['election_id'] = election.election_id
             election_telemetry['election_stake'] = election_stake
-            election.election_stake += election_stake
+            election.election_stake = election_stake
             try:
                 self._sign_and_join_elections(validator_addr, election=election,
                                               elector_params=elector_params,
@@ -194,7 +194,7 @@ class ElectionsRoutine(object):
                                           elector_params=elector_params,
                                           beneficiary_masterchain_adr=proxy_addr, elector_adr=depool_addr)
             election_telemetry['elected'] = True
-            election.election_stake += election_stake
+            election.election_stake = election_stake
             if not self._get_active_election_by_id(election.election_id):
                 self._active_elections.append(election)
         except Exception as ex:
